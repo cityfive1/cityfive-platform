@@ -1,5 +1,6 @@
+
 <script>
-const API = "https://YOUR-RAILWAY-URL";
+const API = "https://cityfive-platform-production.up.railway.app";
 
 async function register() {
   const res = await fetch(API + "/register", {
@@ -8,8 +9,8 @@ async function register() {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      email: email.value,
-      password: password.value
+      email: document.getElementById("email").value,
+      password: document.getElementById("password").value
     })
   });
 
@@ -24,16 +25,17 @@ async function login() {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      email: email.value,
-      password: password.value
+      email: document.getElementById("email").value,
+      password: document.getElementById("password").value
     })
   });
 
   const data = await res.json();
 
   if (res.status === 200) {
-    dashboard.classList.remove("hidden");
-    userEmail.innerText = "Welcome " + email.value;
+    document.getElementById("dashboard").classList.remove("hidden");
+    document.getElementById("userEmail").innerText =
+      "Welcome " + document.getElementById("email").value;
   } else {
     alert(data.message);
   }
