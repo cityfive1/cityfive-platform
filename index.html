@@ -1,66 +1,42 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>CityFive Holdings Ltd</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-
-<body class="bg-gray-900 text-white">
-
-<!-- HEADER -->
-<header class="flex justify-between items-center p-5 bg-gray-800">
-  <h1 class="text-xl font-bold text-yellow-400">CityFive</h1>
-  <nav>
-    <a href="#" class="mx-2">Home</a>
-    <a href="#" class="mx-2">Dashboard</a>
-  </nav>
-</header>
-
-<!-- HERO -->
-<section class="text-center py-20">
-  <h2 class="text-4xl font-bold mb-4">Welcome to CityFive Holdings</h2>
-  <p class="text-gray-400">Secure Crypto Platform</p>
-</section>
-
-<!-- LOGIN CARD -->
-<div class="max-w-md mx-auto bg-gray-800 p-6 rounded-xl shadow-lg">
-
-  <h2 class="text-xl mb-4">Login / Register</h2>
-
-  <input id="email" placeholder="Email" class="w-full p-2 mb-2 text-black">
-  <input id="password" type="password" placeholder="Password" class="w-full p-2 mb-2 text-black">
-
-  <button onclick="register()" class="bg-green-500 w-full p-2 mb-2 rounded">Register</button>
-  <button onclick="login()" class="bg-yellow-500 text-black w-full p-2 rounded">Login</button>
-
-</div>
-
-<!-- DASHBOARD -->
-<div id="dashboard" class="hidden text-center mt-10">
-  <h2 class="text-2xl">Dashboard</h2>
-  <p id="userEmail"></p>
-</div>
 
 <script>
-function register() {
-  localStorage.setItem("email", email.value);
-  localStorage.setItem("password", password.value);
-  alert("Account created");
+const API = "https://YOUR-RAILWAY-URL";
+
+async function register() {
+  const res = await fetch(API + "/register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email: email.value,
+      password: password.value
+    })
+  });
+
+  const data = await res.json();
+  alert(data.message);
 }
 
-function login() {
-  const savedEmail = localStorage.getItem("email");
-  const savedPassword = localStorage.getItem("password");
+async function login() {
+  const res = await fetch(API + "/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email: email.value,
+      password: password.value
+    })
+  });
 
-  if (email.value === savedEmail && password.value === savedPassword) {
+  const data = await res.json();
+
+  if (res.status === 200) {
     dashboard.classList.remove("hidden");
-    userEmail.innerText = "Welcome " + savedEmail;
+    userEmail.innerText = "Welcome " + email.value;
   } else {
-    alert("Wrong details");
+    alert(data.message);
   }
 }
 </script>
-
-</body>
-</html>
