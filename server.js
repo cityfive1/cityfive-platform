@@ -5,7 +5,7 @@ const bcrypt = require("bcryptjs");
 
 const app = express();
 
-app.use(cors({
+app.use(cors());
   origin: "https://cityfive1.github.io"
 }));
 
