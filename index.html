@@ -1,133 +1,81 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CityFive Holdings Ltd</title>
-
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-950 text-white min-h-screen">
+<body>
+  <h1>CityFive Holdings Ltd</h1>
 
-  <!-- HEADER -->
-  <header class="bg-gray-900 border-b border-gray-800">
-    <div class="max-w-6xl mx-auto px-5 py-5 flex justify-between items-center">
-      <h1 class="text-xl font-bold text-yellow-400">
-        CityFive Holdings Ltd
-      </h1>
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
 
-      <span class="text-sm text-gray-400">
-        Secure Crypto Platform
-      </span>
-    </div>
-  </header>
+  <button id="registerButton">Register</button>
+  <button id="loginButton">Login</button>
 
-  <!-- HERO -->
-  <section class="text-center px-5 py-16">
-    <h2 class="text-4xl font-bold mb-4">
-      Welcome to CityFive Holdings
-    </h2>
-
-    <p class="text-gray-400 max-w-xl mx-auto">
-      Access your account through our secure platform.
-    </p>
-  </section>
-
-  <!-- AUTH CARD -->
-  <main class="max-w-md mx-auto px-5 pb-16">
-
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
-
-      <h2 class="text-2xl font-semibold mb-6 text-center">
-        Account
-      </h2>
-
-      <label class="block text-sm text-gray-400 mb-2">
-        Email
-      </label>
-
-      <input
-        id="email"
-        type="email"
-        autocomplete="email"
-        placeholder="you@example.com"
-        class="w-full p-3 mb-4 rounded-lg bg-white text-black outline-none"
-      >
-
-      <label class="block text-sm text-gray-400 mb-2">
-        Password
-      </label>
-
-      <input
-        id="password"
-        type="password"
-        autocomplete="current-password"
-        placeholder="Password"
-        class="w-full p-3 mb-5 rounded-lg bg-white text-black outline-none"
-      >
-
-      <button
-        id="registerButton"
-        onclick="registerUser()"
-        class="w-full bg-green-500 hover:bg-green-600 text-black font-semibold p-3 rounded-lg mb-3"
-      >
-        Register
-      </button>
-
-      <button
-        id="loginButton"
-        onclick="loginUser()"
-        class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold p-3 rounded-lg"
-      >
-        Login
-      </button>
-
-      <p id="message" class="text-center text-sm mt-5 text-gray-400"></p>
-
-    </div>
-
-    <!-- DASHBOARD -->
-    <div
-      id="dashboard"
-      class="hidden bg-gray-900 border border-gray-800 rounded-2xl p-6 mt-6 text-center"
-    >
-
-      <h2 class="text-2xl font-bold mb-3">
-        Dashboard
-      </h2>
-
-      <p id="userEmail" class="text-gray-400 mb-5"></p>
-
-      <button
-        onclick="logoutUser()"
-        class="bg-red-500 hover:bg-red-600 px-5 py-2 rounded-lg font-semibold"
-      >
-        Logout
-      </button>
-
-    </div>
-
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="text-center text-gray-500 text-sm py-8 border-t border-gray-800">
-    © 2026 CityFive Holdings Ltd. All rights reserved.
-  </footer>
-
+  <p id="message"></p>
 
   <script>
-
-    // Your live Abasthan backend
     const API = "https://pressure-damp-fish.abasthan.app";
 
+    document.getElementById("registerButton").addEventListener("click", async function () {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const message = document.getElementById("message");
 
-    function showMessage(message, error = false) {
-      const messageBox = document.getElementById("message");
+      if (!email || !password) {
+        message.innerText = "Please enter your email and password.";
+        return;
+      }
 
-      messageBox.innerText = message;
+      message.innerText = "Creating your account...";
 
-      messageBox.className =
-        error
-          ? "text-center text-sm mt-5 text-red-400"
-          : "text-center text-sm mt-5 text-green-
+      try {
+        const response = await fetch(API + "/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+        message.innerText = data.message || "Registration complete.";
+      } catch (error) {
+        message.innerText = "Unable to connect to the server.";
+      }
+    });
+
+    document.getElementById("loginButton").addEventListener("click", async function () {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const message = document.getElementById("message");
+
+      if (!email || !password) {
+        message.innerText = "Please enter your email and password.";
+        return;
+      }
+
+      message.innerText = "Signing in...";
+
+      try {
+        const response = await fetch(API + "/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+        message.innerText = data.message || "Login complete.";
+      } catch (error) {
+        message.innerText = "Unable to connect to the server.";
+      }
+    });
+  </script>
+</body>
+</html>
