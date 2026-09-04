@@ -1,1 +1,2030 @@
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const bcrypt = require("bcryptjs");
+const session = require("express-session");
+const crypto = require("crypto");
 
+const app = express();
+
+app.set("trust proxy", 1);
+
+const PORT = Number(process.env.PORT) || 3000;
+
+const SESSION_SECRET =
+process.env.SESSION_SECRET ||
+crypto.randomBytes(32).toString("hex");
+
+const FRONTEND_ORIGIN =
+process.env.FRONTEND_ORIGIN ||
+"https://cityfive1.github.io";
+
+const PLATFORM_MODE =
+process.env.PLATFORM_MODE || "SANDBOX";
+
+/*
+IMPORTANT:
+Real customer funds remain disabled until the
+required regulatory, custody, banking and compliance
+arrangements are completed.
+*/
+const REAL_FUNDS_ENABLED = false;
+
+/* =========================
+MIDDLEWARE
+========================= */
+
+app.use(
+cors({
+origin: FRONTEND_ORIGIN,
+credentials: true
+})
+);
+
+app.use(
+express.json({
+limit: "1mb"
+})
+);
+
+app.use(
+session({
+name: "cityfive.sid",
+secret: SESSION_SECRET,
+resave: false,
+saveUninitialized: false,
+cookie: {
+httpOnly: true,
+secure: true,
+sameSite: "none",
+maxAge: 1000 * 60 * 60 * 24
+}
+})
+);
+
+/* =========================
+HELPERS
+========================= */
+
+function makeReference(prefix) {
+return (
+prefix +
+"-" +
+Date.now().toString(36).toUpperCase() +
+"-" +
+crypto.randomBytes(6).toString("hex").toUpperCase()
+);
+}
+
+function requireLogin(req, res, next) {
+if (!req.session.userId) {
+return res.status(401).json({
+error: "Login required"
+});
+}
+
+next();
+}
+
+async function getCurrentUser(req) {
+if (!req.session.userId) {
+return null;
+}
+
+return User.findById(req.session.userId);
+}
+
+async function requireAdmin(req, res, next) {
+try {
+const user = await getCurrentUser(req);
+
+if (!user || user.role !== "admin") {
+  return res.status(403).json({
+    error: "Admin access required"
+  });
+}
+
+req.currentUser = user;
+
+next();
+
+} catch (error) {
+console.error("Admin authentication error:", error);
+
+res.status(500).json({
+  error: "Unable to verify administrator"
+});
+
+}
+}
+
+/* =========================
+USER
+========================= */
+
+const UserSchema = new mongoose.Schema(
+{
+name: {
+type: String,
+required: true,
+trim: true
+},
+
+email: {
+  type: String,
+  required: true,
+  unique: true,
+  lowercase: true,
+  trim: true,
+  index: true
+},
+
+passwordHash: {
+  type: String,
+  required: true
+},
+
+role: {
+  type: String,
+  enum: ["user", "admin", "compliance"],
+  default: "user"
+},
+
+accountStatus: {
+  type: String,
+  enum: [
+    "pending",
+    "active",
+    "restricted",
+    "suspended",
+    "closed"
+  ],
+  default: "pending"
+},
+
+kycStatus: {
+  type: String,
+  enum: [
+    "not_started",
+    "pending",
+    "approved",
+    "rejected",
+    "review"
+  ],
+  default: "not_started"
+},
+
+emailVerified: {
+  type: Boolean,
+  default: false
+},
+
+mfaEnabled: {
+  type: Boolean,
+  default: false
+},
+
+lastLoginAt: {
+  type: Date,
+  default: null
+}
+
+},
+{
+timestamps: true
+}
+);
+
+/* =========================
+ACCOUNT
+========================= */
+
+const AccountSchema = new mongoose.Schema(
+{
+userId: {
+type: mongoose.Schema.Types.ObjectId,
+required: true,
+index: true
+},
+
+currency: {
+  type: String,
+  required: true,
+  uppercase: true
+},
+
+available: {
+  type: Number,
+  default: 0,
+  min: 0
+},
+
+pending: {
+  type: Number,
+  default: 0,
+  min: 0
+},
+
+locked: {
+  type: Number,
+  default: 0,
+  min: 0
+},
+
+providerAccountId: {
+  type: String,
+  default: null
+},
+
+provider: {
+  type: String,
+  default: null
+}
+
+},
+{
+timestamps: true
+}
+);
+
+AccountSchema.index(
+{
+userId: 1,
+currency: 1
+},
+{
+unique: true
+}
+);
+
+/* =========================
+LEDGER
+========================= */
+
+const LedgerEntrySchema = new mongoose.Schema(
+{
+userId: {
+type: mongoose.Schema.Types.ObjectId,
+required: true,
+index: true
+},
+
+accountId: {
+  type: mongoose.Schema.Types.ObjectId,
+  default: null
+},
+
+currency: {
+  type: String,
+  required: true,
+  uppercase: true
+},
+
+type: {
+  type: String,
+  required: true
+},
+
+direction: {
+  type: String,
+  enum: ["credit", "debit"],
+  required: true
+},
+
+amount: {
+  type: Number,
+  required: true,
+  min: 0
+},
+
+balanceAfter: {
+  type: Number,
+  default: null
+},
+
+description: {
+  type: String,
+  default: ""
+},
+
+reference: {
+  type: String,
+  required: true,
+  unique: true,
+  index: true
+},
+
+sourceType: {
+  type: String,
+  default: null
+},
+
+sourceId: {
+  type: String,
+  default: null
+},
+
+idempotencyKey: {
+  type: String,
+  default: null,
+  index: true
+}
+
+},
+{
+timestamps: true
+}
+);
+
+/* =========================
+DEPOSIT
+========================= */
+
+const DepositSchema = new mongoose.Schema(
+{
+userId: {
+type: mongoose.Schema.Types.ObjectId,
+required: true,
+index: true
+},
+
+asset: {
+  type: String,
+  required: true,
+  uppercase: true
+},
+
+amount: {
+  type: Number,
+  required: true,
+  min: 0
+},
+
+status: {
+  type: String,
+  enum: [
+    "requested",
+    "pending",
+    "confirming",
+    "completed",
+    "failed",
+    "cancelled",
+    "sandbox_pending"
+  ],
+  default: "requested"
+},
+
+network: {
+  type: String,
+  default: "SANDBOX"
+},
+
+address: {
+  type: String,
+  default: null
+},
+
+txid: {
+  type: String,
+  default: null,
+  index: true
+},
+
+confirmations: {
+  type: Number,
+  default: 0
+},
+
+requiredConfirmations: {
+  type: Number,
+  default: 3
+},
+
+provider: {
+  type: String,
+  default: null
+},
+
+providerReference: {
+  type: String,
+  default: null,
+  index: true
+},
+
+reference: {
+  type: String,
+  required: true,
+  unique: true
+}
+
+},
+{
+timestamps: true
+}
+);
+
+/* =========================
+WITHDRAWAL
+========================= */
+
+const WithdrawalSchema = new mongoose.Schema(
+{
+userId: {
+type: mongoose.Schema.Types.ObjectId,
+required: true,
+index: true
+},
+
+asset: {
+  type: String,
+  required: true,
+  uppercase: true
+},
+
+amount: {
+  type: Number,
+  required: true,
+  min: 0
+},
+
+address: {
+  type: String,
+  required: true
+},
+
+status: {
+  type: String,
+  enum: [
+    "requested",
+    "pending_review",
+    "approved",
+    "rejected",
+    "processing",
+    "broadcast",
+    "completed",
+    "failed",
+    "cancelled",
+    "sandbox_review"
+  ],
+  default: "requested"
+},
+
+network: {
+  type: String,
+  default: "SANDBOX"
+},
+
+txid: {
+  type: String,
+  default: null,
+  index: true
+},
+
+provider: {
+  type: String,
+  default: null
+},
+
+providerReference: {
+  type: String,
+  default: null
+},
+
+reviewedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  default: null
+},
+
+reviewedAt: {
+  type: Date,
+  default: null
+},
+
+rejectionReason: {
+  type: String,
+  default: null
+},
+
+reference: {
+  type: String,
+  required: true,
+  unique: true
+}
+
+},
+{
+timestamps: true
+}
+);
+
+/* =========================
+BLOCKCHAIN TRANSACTION
+========================= */
+
+const BlockchainTransactionSchema =
+new mongoose.Schema(
+{
+txid: {
+type: String,
+required: true,
+index: true
+},
+
+  network: {
+    type: String,
+    required: true
+  },
+
+  asset: {
+    type: String,
+    required: true,
+    uppercase: true
+  },
+
+  direction: {
+    type: String,
+    enum: [
+      "deposit",
+      "withdrawal",
+      "internal"
+    ],
+    required: true
+  },
+
+  status: {
+    type: String,
+    enum: [
+      "detected",
+      "confirming",
+      "confirmed",
+      "failed"
+    ],
+    default: "detected"
+  },
+
+  confirmations: {
+    type: Number,
+    default: 0
+  },
+
+  requiredConfirmations: {
+    type: Number,
+    default: 3
+  },
+
+  amount: {
+    type: Number,
+    default: 0
+  },
+
+  address: {
+    type: String,
+    default: null
+  },
+
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+    index: true
+  },
+
+  provider: {
+    type: String,
+    default: null
+  },
+
+  providerReference: {
+    type: String,
+    default: null
+  }
+},
+{
+  timestamps: true
+}
+
+);
+
+/* =========================
+KYC
+========================= */
+
+const KycProfileSchema = new mongoose.Schema(
+{
+userId: {
+type: mongoose.Schema.Types.ObjectId,
+unique: true,
+required: true,
+index: true
+},
+
+status: {
+  type: String,
+  enum: [
+    "not_started",
+    "pending",
+    "approved",
+    "rejected",
+    "review"
+  ],
+  default: "not_started"
+},
+
+country: {
+  type: String,
+  default: null
+},
+
+verificationProvider: {
+  type: String,
+  default: null
+},
+
+providerReference: {
+  type: String,
+  default: null
+},
+
+reviewedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  default: null
+},
+
+reviewedAt: {
+  type: Date,
+  default: null
+},
+
+rejectionReason: {
+  type: String,
+  default: null
+}
+
+},
+{
+timestamps: true
+}
+);
+
+/* =========================
+COMPLIANCE CASE
+========================= */
+
+const ComplianceCaseSchema = new mongoose.Schema(
+{
+userId: {
+type: mongoose.Schema.Types.ObjectId,
+required: true,
+index: true
+},
+
+type: {
+  type: String,
+  enum: [
+    "kyc",
+    "aml",
+    "transaction_review",
+    "withdrawal_review",
+    "sanctions",
+    "other"
+  ],
+  required: true
+},
+
+status: {
+  type: String,
+  enum: [
+    "open",
+    "under_review",
+    "cleared",
+    "escalated",
+    "closed"
+  ],
+  default: "open"
+},
+
+priority: {
+  type: String,
+  enum: [
+    "low",
+    "medium",
+    "high",
+    "critical"
+  ],
+  default: "medium"
+},
+
+reason: {
+  type: String,
+  default: ""
+},
+
+assignedTo: {
+  type: mongoose.Schema.Types.ObjectId,
+  default: null
+},
+
+resolution: {
+  type: String,
+  default: null
+}
+
+},
+{
+timestamps: true
+}
+);
+
+/* =========================
+AUDIT LOG
+========================= */
+
+const AuditLogSchema = new mongoose.Schema(
+{
+userId: {
+type: mongoose.Schema.Types.ObjectId,
+default: null,
+index: true
+},
+
+actorUserId: {
+  type: mongoose.Schema.Types.ObjectId,
+  default: null
+},
+
+action: {
+  type: String,
+  required: true
+},
+
+details: {
+  type: String,
+  default: ""
+},
+
+ipAddress: {
+  type: String,
+  default: null
+},
+
+userAgent: {
+  type: String,
+  default: null
+}
+
+},
+{
+timestamps: true
+}
+);
+
+/* =========================
+TRADE
+========================= */
+
+const TradeSchema = new mongoose.Schema(
+{
+userId: {
+type: mongoose.Schema.Types.ObjectId,
+required: true,
+index: true
+},
+
+asset: {
+  type: String,
+  required: true,
+  uppercase: true
+},
+
+side: {
+  type: String,
+  enum: ["buy", "sell"],
+  required: true
+},
+
+amount: {
+  type: Number,
+  required: true,
+  min: 0
+},
+
+price: {
+  type: Number,
+  default: 0
+},
+
+status: {
+  type: String,
+  default: "sandbox"
+},
+
+providerReference: {
+  type: String,
+  default: null
+}
+
+},
+{
+timestamps: true
+}
+);
+
+/* =========================
+MODELS
+========================= */
+
+const User =
+mongoose.model("User", UserSchema);
+
+const Account =
+mongoose.model("Account", AccountSchema);
+
+const LedgerEntry =
+mongoose.model(
+"LedgerEntry",
+LedgerEntrySchema
+);
+
+const Deposit =
+mongoose.model(
+"Deposit",
+DepositSchema
+);
+
+const Withdrawal =
+mongoose.model(
+"Withdrawal",
+WithdrawalSchema
+);
+
+const BlockchainTransaction =
+mongoose.model(
+"BlockchainTransaction",
+BlockchainTransactionSchema
+);
+
+const KycProfile =
+mongoose.model(
+"KycProfile",
+KycProfileSchema
+);
+
+const ComplianceCase =
+mongoose.model(
+"ComplianceCase",
+ComplianceCaseSchema
+);
+
+const AuditLog =
+mongoose.model(
+"AuditLog",
+AuditLogSchema
+);
+
+const Trade =
+mongoose.model(
+"Trade",
+TradeSchema
+);
+
+/* =========================
+BASIC ROUTES
+========================= */
+
+app.get("/", (req, res) => {
+res.json({
+service: "CityFive Holdings Ltd",
+status: "online",
+jurisdiction: "Canada / Quebec",
+mode: PLATFORM_MODE,
+realFundsEnabled: REAL_FUNDS_ENABLED
+});
+});
+
+app.get("/health", (req, res) => {
+res.json({
+status: "ok",
+mode: PLATFORM_MODE,
+realFundsEnabled: REAL_FUNDS_ENABLED,
+database:
+mongoose.connection.readyState === 1
+? "connected"
+: "disconnected"
+});
+});
+
+/* =========================
+REGISTER
+========================= */
+
+app.post("/register", async (req, res) => {
+try {
+const {
+name,
+email,
+password
+} = req.body;
+
+if (!name || !email || !password) {
+  return res.status(400).json({
+    error:
+      "Name, email and password are required"
+  });
+}
+
+if (password.length < 8) {
+  return res.status(400).json({
+    error:
+      "Password must contain at least 8 characters"
+  });
+}
+
+const normalizedEmail =
+  email.trim().toLowerCase();
+
+const existing =
+  await User.findOne({
+    email: normalizedEmail
+  });
+
+if (existing) {
+  return res.status(409).json({
+    error:
+      "An account with this email already exists"
+  });
+}
+
+const passwordHash =
+  await bcrypt.hash(
+    password,
+    12
+  );
+
+const user =
+  await User.create({
+    name: name.trim(),
+    email: normalizedEmail,
+    passwordHash,
+    role: "user",
+    accountStatus: "pending",
+    kycStatus: "not_started"
+  });
+
+await Account.create([
+  {
+    userId: user._id,
+    currency: "CAD",
+    available: 0,
+    pending: 0,
+    locked: 0
+  },
+  {
+    userId: user._id,
+    currency: "BTC",
+    available: 0,
+    pending: 0,
+    locked: 0
+  }
+]);
+
+await KycProfile.create({
+  userId: user._id,
+  status: "not_started"
+});
+
+await AuditLog.create({
+  userId: user._id,
+  action: "REGISTER",
+  details:
+    "Customer account created",
+  ipAddress: req.ip,
+  userAgent: req.get("user-agent")
+});
+
+res.status(201).json({
+  message: "Account created",
+  user: {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    accountStatus:
+      user.accountStatus,
+    kycStatus:
+      user.kycStatus
+  }
+});
+
+} catch (error) {
+console.error(
+"Register error:",
+error
+);
+
+res.status(500).json({
+  error: "Registration failed"
+});
+
+}
+});
+
+/* =========================
+LOGIN
+========================= */
+
+app.post("/login", async (req, res) => {
+try {
+const {
+email,
+password
+} = req.body;
+
+if (!email || !password) {
+  return res.status(400).json({
+    error:
+      "Email and password are required"
+  });
+}
+
+const user =
+  await User.findOne({
+    email:
+      email.trim().toLowerCase()
+  });
+
+if (!user) {
+  return res.status(401).json({
+    error:
+      "Invalid email or password"
+  });
+}
+
+const valid =
+  await bcrypt.compare(
+    password,
+    user.passwordHash
+  );
+
+if (!valid) {
+  return res.status(401).json({
+    error:
+      "Invalid email or password"
+  });
+}
+
+if (
+  user.accountStatus ===
+  "suspended"
+) {
+  return res.status(403).json({
+    error:
+      "This account is suspended"
+  });
+}
+
+req.session.userId =
+  user._id.toString();
+
+user.lastLoginAt = new Date();
+
+await user.save();
+
+await AuditLog.create({
+  userId: user._id,
+  action: "LOGIN",
+  details:
+    "Customer logged in",
+  ipAddress: req.ip,
+  userAgent: req.get("user-agent")
+});
+
+res.json({
+  message:
+    "Login successful",
+
+  user: {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    accountStatus:
+      user.accountStatus,
+    kycStatus:
+      user.kycStatus
+  }
+});
+
+} catch (error) {
+console.error(
+"Login error:",
+error
+);
+
+res.status(500).json({
+  error: "Login failed"
+});
+
+}
+});
+
+/* =========================
+CURRENT USER
+========================= */
+
+app.get(
+"/me",
+requireLogin,
+async (req, res) => {
+try {
+const user =
+await User.findById(
+req.session.userId
+);
+
+  if (!user) {
+    return res.status(401).json({
+      error:
+        "User not found"
+    });
+  }
+
+  const accounts =
+    await Account.find({
+      userId: user._id
+    });
+
+  res.json({
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      accountStatus:
+        user.accountStatus,
+      kycStatus:
+        user.kycStatus,
+      emailVerified:
+        user.emailVerified,
+      mfaEnabled:
+        user.mfaEnabled
+    },
+
+    accounts,
+
+    mode:
+      PLATFORM_MODE,
+
+    realFundsEnabled:
+      REAL_FUNDS_ENABLED
+  });
+} catch (error) {
+  console.error(
+    "Me error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to load account"
+  });
+}
+
+}
+);
+
+/* =========================
+KYC START
+========================= */
+
+app.post(
+"/kyc/start",
+requireLogin,
+async (req, res) => {
+try {
+const profile =
+await KycProfile.findOneAndUpdate(
+{
+userId:
+req.session.userId
+},
+{
+status: "pending"
+},
+{
+new: true,
+upsert: true
+}
+);
+
+  await User.findByIdAndUpdate(
+    req.session.userId,
+    {
+      kycStatus: "pending"
+    }
+  );
+
+  await AuditLog.create({
+    userId:
+      req.session.userId,
+
+    action:
+      "KYC_START",
+
+    details:
+      "KYC application started"
+  });
+
+  res.json({
+    message:
+      "KYC application submitted",
+
+    status:
+      profile.status,
+
+    mode:
+      PLATFORM_MODE
+  });
+} catch (error) {
+  console.error(
+    "KYC error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to start KYC"
+  });
+}
+
+}
+);
+
+/* =========================
+BTC DEPOSIT REQUEST
+========================= */
+
+app.post(
+"/deposits/btc",
+requireLogin,
+async (req, res) => {
+try {
+const user =
+await User.findById(
+req.session.userId
+);
+
+  if (!user) {
+    return res.status(401).json({
+      error:
+        "User not found"
+    });
+  }
+
+  if (
+    user.kycStatus !==
+    "approved"
+  ) {
+    return res.status(403).json({
+      error:
+        "KYC approval required"
+    });
+  }
+
+  const amount =
+    Number(req.body.amount);
+
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    return res.status(400).json({
+      error:
+        "Enter a valid BTC amount"
+    });
+  }
+
+  if (!REAL_FUNDS_ENABLED) {
+    const reference =
+      makeReference("DEMO");
+
+    const deposit =
+      await Deposit.create({
+        userId: user._id,
+        asset: "BTC",
+        amount,
+        status:
+          "sandbox_pending",
+        network:
+          "SANDBOX",
+        address: null,
+        txid: null,
+        confirmations: 0,
+        reference
+      });
+
+    await AuditLog.create({
+      userId: user._id,
+      action:
+        "SANDBOX_BTC_DEPOSIT",
+      details:
+        "Sandbox BTC deposit request: " +
+        reference
+    });
+
+    return res.status(201).json({
+      message:
+        "Sandbox deposit created. No real Bitcoin was transferred.",
+
+      deposit
+    });
+  }
+
+  return res.status(503).json({
+    error:
+      "Real BTC deposits are not enabled"
+  });
+} catch (error) {
+  console.error(
+    "Deposit error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to create deposit"
+  });
+}
+
+}
+);
+
+/* =========================
+BTC WITHDRAWAL REQUEST
+========================= */
+
+app.post(
+"/withdrawals/btc",
+requireLogin,
+async (req, res) => {
+try {
+const user =
+await User.findById(
+req.session.userId
+);
+
+  if (!user) {
+    return res.status(401).json({
+      error:
+        "User not found"
+    });
+  }
+
+  if (
+    user.kycStatus !==
+    "approved"
+  ) {
+    return res.status(403).json({
+      error:
+        "KYC approval required"
+    });
+  }
+
+  const amount =
+    Number(req.body.amount);
+
+  const address =
+    String(
+      req.body.address || ""
+    ).trim();
+
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    return res.status(400).json({
+      error:
+        "Enter a valid BTC amount"
+    });
+  }
+
+  if (!address) {
+    return res.status(400).json({
+      error:
+        "Bitcoin address is required"
+    });
+  }
+
+  const account =
+    await Account.findOne({
+      userId: user._id,
+      currency: "BTC"
+    });
+
+  if (
+    !account ||
+    account.available < amount
+  ) {
+    return res.status(400).json({
+      error:
+        "Insufficient BTC balance"
+    });
+  }
+
+  const reference =
+    makeReference("WD");
+
+  const withdrawal =
+    await Withdrawal.create({
+      userId: user._id,
+      asset: "BTC",
+      amount,
+      address,
+      status:
+        "sandbox_review",
+      network:
+        "SANDBOX",
+      reference
+    });
+
+  await AuditLog.create({
+    userId: user._id,
+    action:
+      "BTC_WITHDRAWAL_REQUEST",
+    details:
+      "Sandbox withdrawal request: " +
+      reference
+  });
+
+  res.status(201).json({
+    message:
+      "Sandbox withdrawal submitted for review. No real Bitcoin was sent.",
+
+    withdrawal
+  });
+} catch (error) {
+  console.error(
+    "Withdrawal error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to create withdrawal"
+  });
+}
+
+}
+);
+
+/* =========================
+TRANSACTIONS
+========================= */
+
+app.get(
+"/transactions",
+requireLogin,
+async (req, res) => {
+try {
+const userId =
+req.session.userId;
+
+  const [
+    ledger,
+    deposits,
+    withdrawals,
+    trades,
+    blockchain
+  ] = await Promise.all([
+    LedgerEntry.find({
+      userId
+    }).sort({
+      createdAt: -1
+    }),
+
+    Deposit.find({
+      userId
+    }).sort({
+      createdAt: -1
+    }),
+
+    Withdrawal.find({
+      userId
+    }).sort({
+      createdAt: -1
+    }),
+
+    Trade.find({
+      userId
+    }).sort({
+      createdAt: -1
+    }),
+
+    BlockchainTransaction.find({
+      userId
+    }).sort({
+      createdAt: -1
+    })
+  ]);
+
+  res.json({
+    ledger,
+    deposits,
+    withdrawals,
+    trades,
+    blockchain
+  });
+} catch (error) {
+  console.error(
+    "Transactions error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to load transactions"
+  });
+}
+
+}
+);
+
+/* =========================
+ACCOUNTS
+========================= */
+
+app.get(
+"/accounts",
+requireLogin,
+async (req, res) => {
+try {
+const accounts =
+await Account.find({
+userId:
+req.session.userId
+});
+
+  res.json({
+    accounts
+  });
+} catch (error) {
+  console.error(
+    "Accounts error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to load accounts"
+  });
+}
+
+}
+);
+
+/* =========================
+ADMIN STATUS
+========================= */
+
+app.get(
+"/admin/status",
+requireAdmin,
+async (req, res) => {
+res.json({
+company:
+"CityFive Holdings Ltd",
+
+  jurisdiction:
+    "Canada / Quebec",
+
+  platformMode:
+    PLATFORM_MODE,
+
+  realFundsEnabled:
+    REAL_FUNDS_ENABLED,
+
+  custodyProviderConnected:
+    false,
+
+  bankingProviderConnected:
+    false,
+
+  kycProviderConnected:
+    false,
+
+  blockchainProviderConnected:
+    false,
+
+  bitcoinNetwork:
+    "SANDBOX",
+
+  message:
+    "Production architecture is being prepared. Real customer funds remain disabled."
+});
+
+}
+);
+
+/* =========================
+ADMIN USERS
+========================= */
+
+app.get(
+"/admin/users",
+requireAdmin,
+async (req, res) => {
+try {
+const users =
+await User.find()
+.select("-passwordHash")
+.sort({
+createdAt: -1
+});
+
+  res.json({
+    users
+  });
+} catch (error) {
+  console.error(
+    "Admin users error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to load users"
+  });
+}
+
+}
+);
+
+/* =========================
+ADMIN KYC
+========================= */
+
+app.get(
+"/admin/kyc",
+requireAdmin,
+async (req, res) => {
+try {
+const profiles =
+await KycProfile.find()
+.sort({
+createdAt: -1
+});
+
+  res.json({
+    profiles
+  });
+} catch (error) {
+  console.error(
+    "Admin KYC error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to load KYC records"
+  });
+}
+
+}
+);
+
+/* =========================
+ADMIN APPROVE KYC
+========================= */
+
+app.post(
+"/admin/kyc/:id/approve",
+requireAdmin,
+async (req, res) => {
+try {
+const profile =
+await KycProfile.findByIdAndUpdate(
+req.params.id,
+{
+status:
+"approved",
+reviewedBy:
+req.currentUser._id,
+reviewedAt:
+new Date()
+},
+{
+new: true
+}
+);
+
+  if (!profile) {
+    return res.status(404).json({
+      error:
+        "KYC profile not found"
+    });
+  }
+
+  await User.findByIdAndUpdate(
+    profile.userId,
+    {
+      kycStatus:
+        "approved",
+      accountStatus:
+        "active"
+    }
+  );
+
+  await AuditLog.create({
+    userId:
+      profile.userId,
+
+    actorUserId:
+      req.currentUser._id,
+
+    action:
+      "KYC_APPROVED",
+
+    details:
+      "KYC approved by administrator"
+  });
+
+  res.json({
+    message:
+      "KYC approved",
+
+    profile
+  });
+} catch (error) {
+  console.error(
+    "Approve KYC error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to approve KYC"
+  });
+}
+
+}
+);
+
+/* =========================
+ADMIN WITHDRAWALS
+========================= */
+
+app.get(
+"/admin/withdrawals",
+requireAdmin,
+async (req, res) => {
+try {
+const withdrawals =
+await Withdrawal.find()
+.sort({
+createdAt: -1
+});
+
+  res.json({
+    withdrawals
+  });
+} catch (error) {
+  console.error(
+    "Admin withdrawals error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to load withdrawals"
+  });
+}
+
+}
+);
+
+/* =========================
+ADMIN COMPLIANCE
+========================= */
+
+app.get(
+"/admin/compliance",
+requireAdmin,
+async (req, res) => {
+try {
+const cases =
+await ComplianceCase.find()
+.sort({
+createdAt: -1
+});
+
+  res.json({
+    cases
+  });
+} catch (error) {
+  console.error(
+    "Admin compliance error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to load compliance cases"
+  });
+}
+
+}
+);
+
+/* =========================
+ADMIN AUDIT
+========================= */
+
+app.get(
+"/admin/audit",
+requireAdmin,
+async (req, res) => {
+try {
+const logs =
+await AuditLog.find()
+.sort({
+createdAt: -1
+})
+.limit(500);
+
+  res.json({
+    logs
+  });
+} catch (error) {
+  console.error(
+    "Audit error:",
+    error
+  );
+
+  res.status(500).json({
+    error:
+      "Unable to load audit logs"
+  });
+}
+
+}
+);
+
+/* =========================
+LOGOUT
+========================= */
+
+app.post(
+"/logout",
+(req, res) => {
+req.session.destroy(
+() => {
+res.json({
+message:
+"Logged out"
+});
+}
+);
+}
+);
+
+/* =========================
+START SERVER
+========================= */
+
+async function startServer() {
+
+if (!process.env.MONGO_URI) {
+
+console.error(
+  "ERROR: MONGO_URI environment variable is missing."
+);
+
+process.exit(1);
+
+}
+
+const server =
+app.listen(
+PORT,
+"0.0.0.0",
+() => {
+
+    console.log(
+      "Server running on port " +
+      PORT
+    );
+
+    console.log(
+      "Platform mode: " +
+      PLATFORM_MODE
+    );
+
+    console.log(
+      "Real funds enabled: false"
+    );
+
+    console.log(
+      "Jurisdiction: Canada / Quebec"
+    );
+
+    connectDatabase();
+  }
+);
+
+server.on(
+"error",
+(error) => {
+
+  console.error(
+    "HTTP server error:",
+    error
+  );
+
+  process.exit(1);
+}
+
+);
+
+async function connectDatabase() {
+
+try {
+
+  await mongoose.connect(
+    process.env.MONGO_URI
+  );
+
+  console.log(
+    "DB connected"
+  );
+
+} catch (error) {
+
+  console.error(
+    "Database connection error:",
+    error
+  );
+}
+
+}
+
+async function shutdown(
+signal
+) {
+
+console.log(
+  signal +
+    " received. Shutting down gracefully..."
+);
+
+server.close(
+  async () => {
+
+    try {
+
+      await mongoose
+        .connection
+        .close();
+
+      console.log(
+        "Database connection closed."
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Error closing database:",
+        error
+      );
+    }
+
+    process.exit(0);
+  }
+);
+
+
+setTimeout(
+  () => {
+
+    console.error(
+      "Forced shutdown after timeout."
+    );
+
+    process.exit(1);
+
+  },
+  10000
+).unref();
+
+}
+
+process.on(
+"SIGTERM",
+() =>
+shutdown("SIGTERM")
+);
+
+process.on(
+"SIGINT",
+() =>
+shutdown("SIGINT")
+);
+}
+
+startServer();
