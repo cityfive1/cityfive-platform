@@ -1,3 +1,4 @@
+
 app.post(
   "/webhooks/fireblocks",
   express.raw({
@@ -15,6 +16,10 @@ app.post(
       );
 
       if (!valid) {
+        console.warn(
+          "Rejected Fireblocks webhook: invalid signature"
+        );
+
         return res.status(401).json({
           error: "Invalid webhook signature"
         });
