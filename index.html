@@ -4,9 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>CityFive Holdings Ltd</title>
-
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
@@ -14,7 +12,6 @@
 
 <header class="bg-gray-900 border-b border-gray-800">
   <div class="max-w-6xl mx-auto px-5 py-5 flex justify-between items-center">
-
     <h1 class="text-xl font-bold text-yellow-400">
       CityFive Holdings Ltd
     </h1>
@@ -22,13 +19,10 @@
     <span class="text-sm text-gray-400">
       Crypto Platform
     </span>
-
   </div>
 </header>
 
-
 <section class="text-center px-5 py-10">
-
   <h2 class="text-4xl font-bold mb-4">
     Welcome to CityFive Holdings
   </h2>
@@ -36,132 +30,111 @@
   <p class="text-gray-400">
     Secure access to your CityFive account.
   </p>
-
 </section>
-
 
 <main class="max-w-md mx-auto px-5 pb-16">
 
+  <!-- LOGIN / REGISTER -->
 
-<!-- =========================
-LOGIN / REGISTER
-========================= -->
-
-<div
-  id="authCard"
-  class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl"
->
-
-  <h2 class="text-2xl font-semibold mb-6 text-center">
-    Account
-  </h2>
-
-
-  <label class="block text-sm text-gray-400 mb-2">
-    Email
-  </label>
-
-  <input
-    id="email"
-    type="email"
-    autocomplete="email"
-    placeholder="you@example.com"
-    class="w-full p-3 mb-4 rounded-lg bg-white text-black"
+  <div
+    id="authCard"
+    class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl"
   >
 
-
-  <label class="block text-sm text-gray-400 mb-2">
-    Password
-  </label>
-
-  <input
-    id="password"
-    type="password"
-    autocomplete="current-password"
-    placeholder="Password"
-    class="w-full p-3 mb-5 rounded-lg bg-white text-black"
-  >
-
-
-  <button
-    id="registerButton"
-    onclick="registerUser()"
-    class="w-full bg-green-500 hover:bg-green-600 text-black font-semibold p-3 rounded-lg mb-3"
-  >
-    Register
-  </button>
-
-
-  <button
-    id="loginButton"
-    onclick="loginUser()"
-    class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold p-3 rounded-lg"
-  >
-    Login
-  </button>
-
-
-  <p
-    id="message"
-    class="text-center text-sm mt-5 text-gray-400"
-  ></p>
-
-</div>
-
-
-
-<!-- =========================
-DASHBOARD
-========================= -->
-
-<div
-  id="dashboard"
-  class="hidden bg-gray-900 border border-gray-800 rounded-2xl p-6 mt-6"
->
-
-  <div class="text-center mb-6">
-
-    <h2 class="text-2xl font-bold">
-      CityFive Dashboard
+    <h2 class="text-2xl font-semibold mb-6 text-center">
+      Account
     </h2>
 
-    <p class="text-gray-400 mt-2">
-      Signed in as:
-    </p>
+    <label class="block text-sm text-gray-400 mb-2">
+      Email
+    </label>
+
+    <input
+      id="email"
+      type="email"
+      autocomplete="email"
+      placeholder="you@example.com"
+      class="w-full p-3 mb-4 rounded-lg bg-white text-black"
+    >
+
+    <label class="block text-sm text-gray-400 mb-2">
+      Password
+    </label>
+
+    <input
+      id="password"
+      type="password"
+      autocomplete="current-password"
+      placeholder="Password"
+      class="w-full p-3 mb-5 rounded-lg bg-white text-black"
+    >
+
+    <button
+      id="registerButton"
+      class="w-full bg-green-500 hover:bg-green-600 text-black font-semibold p-3 rounded-lg mb-3"
+    >
+      Register
+    </button>
+
+    <button
+      id="loginButton"
+      class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold p-3 rounded-lg"
+    >
+      Login
+    </button>
 
     <p
-      id="userEmail"
-      class="text-yellow-400 font-semibold mt-1"
+      id="message"
+      class="text-center text-sm mt-5 text-gray-400"
     ></p>
 
   </div>
 
 
-  <!-- DEMO NOTICE -->
+  <!-- DASHBOARD -->
 
-  <div class="bg-yellow-900/40 border border-yellow-600 rounded-xl p-4 mb-6">
+  <div
+    id="dashboard"
+    class="hidden bg-gray-900 border border-gray-800 rounded-2xl p-6 mt-6"
+  >
 
-    <p class="text-yellow-300 font-bold text-center">
-      DEMO ENVIRONMENT
-    </p>
+    <div class="text-center mb-6">
 
-    <p class="text-yellow-200 text-sm text-center mt-2">
-      All balances, investments, profits and transactions
-      displayed here are simulated and do not represent real funds.
-    </p>
+      <h2 class="text-2xl font-bold">
+        CityFive Dashboard
+      </h2>
 
-  </div>
+      <p class="text-gray-400 mt-2">
+        Signed in as:
+      </p>
+
+      <p
+        id="userEmail"
+        class="text-yellow-400 font-semibold mt-1"
+      ></p>
+
+    </div>
 
 
+    <!-- DEMO NOTICE -->
 
-  <!-- BALANCES -->
+    <div class="bg-yellow-900/40 border border-yellow-600 rounded-xl p-4 mb-6">
 
-  <div class="grid gap-4">
+      <p class="text-yellow-300 font-bold text-center">
+        DEMO ENVIRONMENT
+      </p>
+
+      <p class="text-yellow-200 text-sm text-center mt-2">
+        All balances, investments, profits and transactions
+        displayed here are simulated and do not represent real funds.
+      </p>
+
+    </div>
 
 
-    <!-- USD -->
+    <!-- USD BALANCE -->
 
-    <div class="bg-gray-800 rounded-xl p-5">
+    <div class="bg-gray-800 rounded-xl p-5 mb-4">
 
       <p class="text-gray-400 text-sm">
         Demo Account Balance
@@ -181,10 +154,9 @@ DASHBOARD
     </div>
 
 
+    <!-- BTC BALANCE -->
 
-    <!-- BTC -->
-
-    <div class="bg-gray-800 rounded-xl p-5">
+    <div class="bg-gray-800 rounded-xl p-5 mb-4">
 
       <p class="text-gray-400 text-sm">
         Demo Bitcoin Balance
@@ -204,10 +176,9 @@ DASHBOARD
     </div>
 
 
-
     <!-- TRANSACTION COUNT -->
 
-    <div class="bg-gray-800 rounded-xl p-5">
+    <div class="bg-gray-800 rounded-xl p-5 mb-6">
 
       <p class="text-gray-400 text-sm">
         Transactions
@@ -226,15 +197,8 @@ DASHBOARD
 
     </div>
 
-  </div>
 
-
-
-  <!-- =========================
-  TRANSACTION HISTORY
-  ========================= -->
-
-  <div class="mt-8">
+    <!-- TRANSACTION HISTORY -->
 
     <h3 class="text-xl font-bold mb-4">
       Transaction History
@@ -244,75 +208,47 @@ DASHBOARD
       id="transactionList"
       class="space-y-3"
     >
-
       <p class="text-gray-500 text-sm">
-        Loading transactions...
+        No simulated transactions yet.
       </p>
-
     </div>
 
+
+    <!-- LOGOUT -->
+
+    <button
+      id="logoutButton"
+      class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold p-3 rounded-lg mt-8"
+    >
+      Logout
+    </button>
+
   </div>
-
-
-
-  <!-- LOGOUT -->
-
-  <button
-    onclick="logoutUser()"
-    class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold p-3 rounded-lg mt-8"
-  >
-    Logout
-  </button>
-
-</div>
 
 </main>
 
 
-
 <footer class="text-center text-gray-500 text-sm py-8 border-t border-gray-800">
-
-  © 2026 CityFive Holdings Ltd.
-  All rights reserved.
-
+  © 2026 CityFive Holdings Ltd. All rights reserved.
 </footer>
-
 
 
 <script>
 
+const API = "https://pressure-damp-fish.abasthan.app";
 
-/* =========================
-API
-========================= */
-
-const API =
-  "https://pressure-damp-fish.abasthan.app";
-
-
-
-/* =========================
-MESSAGE
-========================= */
 
 function showMessage(message, error = false) {
 
-  const box =
-    document.getElementById("message");
+  const box = document.getElementById("message");
 
   box.innerText = message;
 
   box.className = error
     ? "text-center text-sm mt-5 text-red-400"
     : "text-center text-sm mt-5 text-green-400";
-
 }
 
-
-
-/* =========================
-REGISTER
-========================= */
 
 async function registerUser() {
 
@@ -322,7 +258,6 @@ async function registerUser() {
   const password =
     document.getElementById("password").value;
 
-
   if (!email || !password) {
 
     showMessage(
@@ -333,55 +268,40 @@ async function registerUser() {
     return;
   }
 
-
   try {
 
-    showMessage(
-      "Creating your account..."
+    showMessage("Creating your account...");
+
+    const response = await fetch(
+      API + "/register",
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
+      }
     );
 
-
-    const response =
-      await fetch(
-        API + "/register",
-        {
-          method: "POST",
-
-          credentials: "include",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            email,
-            password
-          })
-        }
-      );
-
-
-    const data =
-      await response.json();
-
+    const data = await response.json();
 
     if (!response.ok) {
 
       showMessage(
-        data.message ||
-        "Registration failed.",
+        data.message || "Registration failed.",
         true
       );
 
       return;
     }
 
-
     showMessage(
       "Account created successfully. You can now log in."
     );
-
 
   } catch (error) {
 
@@ -391,16 +311,9 @@ async function registerUser() {
       "Unable to connect to the server.",
       true
     );
-
   }
-
 }
 
-
-
-/* =========================
-LOGIN
-========================= */
 
 async function loginUser() {
 
@@ -410,7 +323,6 @@ async function loginUser() {
   const password =
     document.getElementById("password").value;
 
-
   if (!email || !password) {
 
     showMessage(
@@ -421,58 +333,40 @@ async function loginUser() {
     return;
   }
 
-
   try {
 
-    showMessage(
-      "Signing you in..."
+    showMessage("Signing you in...");
+
+    const response = await fetch(
+      API + "/login",
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
+      }
     );
 
-
-    const response =
-      await fetch(
-        API + "/login",
-        {
-          method: "POST",
-
-          credentials: "include",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            email,
-            password
-          })
-        }
-      );
-
-
-    const data =
-      await response.json();
-
+    const data = await response.json();
 
     if (!response.ok) {
 
       showMessage(
-        data.message ||
-        "Login failed.",
+        data.message || "Login failed.",
         true
       );
 
       return;
     }
 
-
-    showMessage(
-      "Login successful."
-    );
-
+    showMessage("Login successful.");
 
     await loadDashboard();
-
 
   } catch (error) {
 
@@ -482,54 +376,37 @@ async function loginUser() {
       "Unable to connect to the server.",
       true
     );
-
   }
-
 }
 
-
-
-/* =========================
-LOAD DASHBOARD
-========================= */
 
 async function loadDashboard() {
 
   try {
 
-    const response =
-      await fetch(
-        API + "/me",
-        {
-          method: "GET",
-          credentials: "include"
-        }
-      );
-
+    const response = await fetch(
+      API + "/me",
+      {
+        method: "GET",
+        credentials: "include"
+      }
+    );
 
     if (!response.ok) {
-
       return;
     }
 
+    const data = await response.json();
 
-    const data =
-      await response.json();
-
-
-    /* EMAIL */
 
     document.getElementById(
       "userEmail"
-    ).innerText =
-      data.email;
+    ).innerText = data.email;
 
 
-    /* USD */
-
-    const usd =
-      Number(data.usdBalance || 0);
-
+    const usd = Number(
+      data.usdBalance || 0
+    );
 
     document.getElementById(
       "usdBalance"
@@ -544,21 +421,231 @@ async function loadDashboard() {
       );
 
 
-    /* BTC */
-
-    const btc =
-      Number(data.btcBalance || 0);
-
+    const btc = Number(
+      data.btcBalance || 0
+    );
 
     document.getElementById(
       "btcBalance"
     ).innerText =
-      btc.toFixed(8) +
-      " BTC";
+      btc.toFixed(8) + " BTC";
 
-
-    /* SHOW DASHBOARD */
 
     document
       .getElementById("authCard")
       .classList.add("hidden");
+
+    document
+      .getElementById("dashboard")
+      .classList.remove("hidden");
+
+
+    await loadTransactions();
+
+  } catch (error) {
+
+    console.error(error);
+  }
+}
+
+
+async function loadTransactions() {
+
+  try {
+
+    const response = await fetch(
+      API + "/transactions",
+      {
+        method: "GET",
+        credentials: "include"
+      }
+    );
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+
+    const transactions =
+      data.transactions || [];
+
+
+    document.getElementById(
+      "transactionCount"
+    ).innerText =
+      transactions.length;
+
+
+    const list =
+      document.getElementById(
+        "transactionList"
+      );
+
+
+    if (transactions.length === 0) {
+
+      list.innerHTML = `
+        <div class="bg-gray-800 rounded-xl p-4">
+          <p class="text-gray-400 text-sm">
+            No simulated transactions yet.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+
+    list.innerHTML =
+      transactions.map(
+        function(transaction) {
+
+          const amount =
+            Number(transaction.amount || 0);
+
+          const date =
+            transaction.createdAt
+              ? new Date(
+                  transaction.createdAt
+                ).toLocaleDateString()
+              : "";
+
+
+          return `
+            <div class="bg-gray-800 rounded-xl p-4">
+
+              <div class="flex justify-between items-start gap-3">
+
+                <div>
+
+                  <p class="font-semibold capitalize">
+                    ${escapeHtml(transaction.type)}
+                  </p>
+
+                  <p class="text-xs text-gray-500 mt-1">
+                    ${escapeHtml(
+                      transaction.description || ""
+                    )}
+                  </p>
+
+                  <p class="text-xs text-gray-500 mt-1">
+                    ${date}
+                  </p>
+
+                </div>
+
+                <div class="text-right">
+
+                  <p class="font-bold">
+                    ${amount.toLocaleString(
+                      "en-US",
+                      {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 8
+                      }
+                    )}
+                    ${escapeHtml(transaction.asset)}
+                  </p>
+
+                  <p class="text-xs text-yellow-400 mt-1">
+                    SIMULATED
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+          `;
+        }
+      ).join("");
+
+  } catch (error) {
+
+    console.error(error);
+  }
+}
+
+
+function escapeHtml(value) {
+
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+
+async function logoutUser() {
+
+  try {
+
+    await fetch(
+      API + "/logout",
+      {
+        method: "POST",
+        credentials: "include"
+      }
+    );
+
+  } catch (error) {
+
+    console.error(error);
+  }
+
+
+  document
+    .getElementById("dashboard")
+    .classList.add("hidden");
+
+  document
+    .getElementById("authCard")
+    .classList.remove("hidden");
+
+  document.getElementById(
+    "password"
+  ).value = "";
+
+  showMessage(
+    "You have been logged out."
+  );
+}
+
+
+/* BUTTON EVENTS */
+
+document
+  .getElementById("registerButton")
+  .addEventListener(
+    "click",
+    registerUser
+  );
+
+
+document
+  .getElementById("loginButton")
+  .addEventListener(
+    "click",
+    loginUser
+  );
+
+
+document
+  .getElementById("logoutButton")
+  .addEventListener(
+    "click",
+    logoutUser
+  );
+
+
+/* CHECK EXISTING SESSION */
+
+loadDashboard();
+
+</script>
+
+</body>
+</html>
