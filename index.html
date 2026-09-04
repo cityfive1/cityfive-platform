@@ -1,81 +1,352 @@
 
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CityFive Holdings Ltd</title>
-</head>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head><body class="bg-gray-950 text-white min-h-screen"><header class="bg-gray-900 border-b border-gray-800">
+  <div class="max-w-6xl mx-auto px-5 py-5 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-yellow-400">
+      CityFive Holdings Ltd
+    </h1><span class="text-sm text-gray-400">
+  Secure Crypto Platform
+</span>
 
-<body>
-  <h1>CityFive Holdings Ltd</h1>
+  </div>
+</header><section class="text-center px-5 py-12">
+  <h2 class="text-4xl font-bold mb-4">
+    Welcome to CityFive Holdings
+  </h2>  <p class="text-gray-400">
+    Secure access to your CityFive account.
+  </p>
+</section><main class="max-w-md mx-auto px-5 pb-16">  <!-- LOGIN / REGISTER -->  <div id="authCard"
+       class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl"><h2 class="text-2xl font-semibold mb-6 text-center">
+  Account
+</h2>
 
-  <input id="email" type="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
+<label class="block text-sm text-gray-400 mb-2">
+  Email
+</label>
 
-  <button id="registerButton">Register</button>
-  <button id="loginButton">Login</button>
+<input
+  id="email"
+  type="email"
+  autocomplete="email"
+  placeholder="you@example.com"
+  class="w-full p-3 mb-4 rounded-lg bg-white text-black"
+>
 
-  <p id="message"></p>
+<label class="block text-sm text-gray-400 mb-2">
+  Password
+</label>
 
-  <script>
-    const API = "https://pressure-damp-fish.abasthan.app";
+<input
+  id="password"
+  type="password"
+  autocomplete="current-password"
+  placeholder="Password"
+  class="w-full p-3 mb-5 rounded-lg bg-white text-black"
+>
 
-    document.getElementById("registerButton").addEventListener("click", async function () {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-      const message = document.getElementById("message");
+<button
+  id="registerButton"
+  onclick="registerUser()"
+  class="w-full bg-green-500 hover:bg-green-600 text-black font-semibold p-3 rounded-lg mb-3"
+>
+  Register
+</button>
 
-      if (!email || !password) {
-        message.innerText = "Please enter your email and password.";
-        return;
-      }
+<button
+  id="loginButton"
+  onclick="loginUser()"
+  class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold p-3 rounded-lg"
+>
+  Login
+</button>
 
-      message.innerText = "Creating your account...";
+<p id="message"
+   class="text-center text-sm mt-5 text-gray-400">
+</p>
 
-      try {
-        const response = await fetch(API + "/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ email, password })
-        });
+  </div>  <!-- DASHBOARD -->  <div id="dashboard"
+       class="hidden bg-gray-900 border border-gray-800 rounded-2xl p-6 mt-6"><h2 class="text-2xl font-bold mb-2 text-center">
+  CityFive Dashboard
+</h2>
 
-        const data = await response.json();
-        message.innerText = data.message || "Registration complete.";
-      } catch (error) {
-        message.innerText = "Unable to connect to the server.";
-      }
+<p class="text-gray-400 text-center mb-6">
+  Signed in as:
+</p>
+
+<p id="userEmail"
+   class="text-yellow-400 text-center font-semibold mb-8">
+</p>
+
+<div class="grid gap-4">
+
+  <div class="bg-gray-800 rounded-xl p-5">
+    <p class="text-gray-400 text-sm">
+      Account Balance
+    </p>
+
+    <p class="text-2xl font-bold mt-2">
+      $0.00
+    </p>
+  </div>
+
+  <div class="bg-gray-800 rounded-xl p-5">
+    <p class="text-gray-400 text-sm">
+      Bitcoin Balance
+    </p>
+
+    <p class="text-2xl font-bold mt-2">
+      0 BTC
+    </p>
+  </div>
+
+  <div class="bg-gray-800 rounded-xl p-5">
+    <p class="text-gray-400 text-sm">
+      Transactions
+    </p>
+
+    <p class="text-lg font-semibold mt-2">
+      No transactions yet
+    </p>
+  </div>
+
+</div>
+
+<button
+  onclick="logoutUser()"
+  class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold p-3 rounded-lg mt-6"
+>
+  Logout
+</button>
+
+  </div></main><footer class="text-center text-gray-500 text-sm py-8 border-t border-gray-800">
+  © 2026 CityFive Holdings Ltd. All rights reserved.
+</footer><script>
+
+const API = "https://pressure-damp-fish.abasthan.app";
+
+
+function showMessage(message, error = false) {
+
+  const box = document.getElementById("message");
+
+  box.innerText = message;
+
+  box.className = error
+    ? "text-center text-sm mt-5 text-red-400"
+    : "text-center text-sm mt-5 text-green-400";
+}
+
+
+async function registerUser() {
+
+  const email =
+    document.getElementById("email").value.trim();
+
+  const password =
+    document.getElementById("password").value;
+
+  if (!email || !password) {
+
+    showMessage(
+      "Please enter your email and password.",
+      true
+    );
+
+    return;
+  }
+
+  try {
+
+    showMessage("Creating your account...");
+
+    const response = await fetch(API + "/register", {
+
+      method: "POST",
+
+      credentials: "include",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        email,
+        password
+      })
+
     });
 
-    document.getElementById("loginButton").addEventListener("click", async function () {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-      const message = document.getElementById("message");
+    const data = await response.json();
 
-      if (!email || !password) {
-        message.innerText = "Please enter your email and password.";
-        return;
-      }
+    if (!response.ok) {
 
-      message.innerText = "Signing in...";
+      showMessage(
+        data.message || "Registration failed.",
+        true
+      );
 
-      try {
-        const response = await fetch(API + "/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ email, password })
-        });
+      return;
+    }
 
-        const data = await response.json();
-        message.innerText = data.message || "Login complete.";
-      } catch (error) {
-        message.innerText = "Unable to connect to the server.";
-      }
+    showMessage(
+      "Account created successfully. You can now log in."
+    );
+
+  } catch (error) {
+
+    showMessage(
+      "Unable to connect to the server.",
+      true
+    );
+
+  }
+}
+
+
+async function loginUser() {
+
+  const email =
+    document.getElementById("email").value.trim();
+
+  const password =
+    document.getElementById("password").value;
+
+  if (!email || !password) {
+
+    showMessage(
+      "Please enter your email and password.",
+      true
+    );
+
+    return;
+  }
+
+  try {
+
+    showMessage("Signing you in...");
+
+    const response = await fetch(API + "/login", {
+
+      method: "POST",
+
+      credentials: "include",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        email,
+        password
+      })
+
     });
-  </script>
-</body>
+
+    const data = await response.json();
+
+    if (!response.ok) {
+
+      showMessage(
+        data.message || "Login failed.",
+        true
+      );
+
+      return;
+    }
+
+    showMessage("Login successful.");
+
+    await loadDashboard();
+
+  } catch (error) {
+
+    showMessage(
+      "Unable to connect to the server.",
+      true
+    );
+
+  }
+}
+
+
+async function loadDashboard() {
+
+  try {
+
+    const response = await fetch(API + "/me", {
+
+      method: "GET",
+
+      credentials: "include"
+
+    });
+
+    if (!response.ok) {
+
+      return;
+
+    }
+
+    const data = await response.json();
+
+    document.getElementById("userEmail").innerText =
+      data.email;
+
+    document
+      .getElementById("authCard")
+      .classList.add("hidden");
+
+    document
+      .getElementById("dashboard")
+      .classList.remove("hidden");
+
+  } catch (error) {
+
+    console.error(error);
+
+  }
+}
+
+
+async function logoutUser() {
+
+  try {
+
+    await fetch(API + "/logout", {
+
+      method: "POST",
+
+      credentials: "include"
+
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+  }
+
+  document
+    .getElementById("dashboard")
+    .classList.add("hidden");
+
+  document
+    .getElementById("authCard")
+    .classList.remove("hidden");
+
+  document.getElementById("password").value = "";
+
+  showMessage("You have been logged out.");
+
+}
+
+
+loadDashboard();
+
+</script></body>
 </html>
