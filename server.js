@@ -32,6 +32,10 @@ app.get("/", (req, res) => {
 res.send("CityFive backend is running");
 });
 
+/* =========================
+USER MODEL
+========================= */
+
 const UserSchema = new mongoose.Schema({
 email: {
 type: String,
@@ -40,16 +44,109 @@ unique: true,
 lowercase: true,
 trim: true
 },
+
 passwordHash: {
 type: String,
 required: true
+},
+
+usdBalance: {
+type: Number,
+default: 0,
+min: 0
+},
+
+btcBalance: {
+type: Number,
+default: 0,
+min: 0
+},
+
+createdAt: {
+type: Date,
+default: Date.now
 }
 });
 
 const User = mongoose.model("User", UserSchema);
 
+/* =========================
+TRANSACTION MODEL
+========================= */
+
+const TransactionSchema = new mongoose.Schema({
+
+userId: {
+type: mongoose.Schema.Types.ObjectId,
+ref: "User",
+required: true,
+index: true
+},
+
+type: {
+type: String,
+enum: [
+"deposit",
+"withdrawal",
+"btc_purchase",
+"btc_sale",
+"investment"
+],
+required: true
+},
+
+asset: {
+type: String,
+enum: ["USD", "BTC"],
+required: true
+},
+
+amount: {
+type: Number,
+required: true,
+min: 0
+},
+
+status: {
+type: String,
+enum: [
+"pending",
+"completed",
+"failed",
+"cancelled"
+],
+default: "pending"
+},
+
+reference: {
+type: String,
+unique: true,
+sparse: true
+},
+
+description: {
+type: String,
+default: ""
+},
+
+createdAt: {
+type: Date,
+default: Date.now
+}
+
+});
+
+const Transaction =
+mongoose.model("Transaction", TransactionSchema);
+
+/* =========================
+REGISTER
+========================= */
+
 app.post("/register", async (req, res) => {
+
 try {
+
 const { email, password } = req.body;
 
 if (!email || !password) {
@@ -64,11 +161,13 @@ if (password.length < 8) {
   });
 }
 
-const normalizedEmail = email.toLowerCase().trim();
+const normalizedEmail =
+  email.toLowerCase().trim();
 
-const existingUser = await User.findOne({
-  email: normalizedEmail
-});
+const existingUser =
+  await User.findOne({
+    email: normalizedEmail
+  });
 
 if (existingUser) {
   return res.status(409).json({
@@ -76,7 +175,8 @@ if (existingUser) {
   });
 }
 
-const passwordHash = await bcrypt.hash(password, 12);
+const passwordHash =
+  await bcrypt.hash(password, 12);
 
 await User.create({
   email: normalizedEmail,
@@ -88,17 +188,28 @@ res.status(201).json({
 });
 
 } catch (error) {
-console.error("Registration error:", error);
+
+console.error(
+  "Registration error:",
+  error
+);
 
 res.status(500).json({
   message: "Registration failed"
 });
 
 }
+
 });
 
+/* =========================
+LOGIN
+========================= */
+
 app.post("/login", async (req, res) => {
+
 try {
+
 const { email, password } = req.body;
 
 if (!email || !password) {
@@ -107,11 +218,13 @@ if (!email || !password) {
   });
 }
 
-const normalizedEmail = email.toLowerCase().trim();
+const normalizedEmail =
+  email.toLowerCase().trim();
 
-const user = await User.findOne({
-  email: normalizedEmail
-});
+const user =
+  await User.findOne({
+    email: normalizedEmail
+  });
 
 if (!user) {
   return res.status(401).json({
@@ -119,10 +232,11 @@ if (!user) {
   });
 }
 
-const validPassword = await bcrypt.compare(
-  password,
-  user.passwordHash
-);
+const validPassword =
+  await bcrypt.compare(
+    password,
+    user.passwordHash
+  );
 
 if (!validPassword) {
   return res.status(401).json({
@@ -130,86 +244,196 @@ if (!validPassword) {
   });
 }
 
-req.session.userId = user._id.toString();
+req.session.userId =
+  user._id.toString();
 
 res.json({
   message: "Login successful"
 });
 
 } catch (error) {
-console.error("Login error:", error);
+
+console.error(
+  "Login error:",
+  error
+);
 
 res.status(500).json({
   message: "Login failed"
 });
 
 }
+
 });
 
+/* =========================
+AUTHENTICATION MIDDLEWARE
+========================= */
+
 function requireLogin(req, res, next) {
+
 if (!req.session.userId) {
+
 return res.status(401).json({
-message: "Authentication required"
+  message: "Authentication required"
 });
+
 }
 
 next();
+
 }
 
+/* =========================
+CURRENT USER / BALANCE
+========================= */
+
 app.get("/me", requireLogin, async (req, res) => {
+
 try {
-const user = await User.findById(req.session.userId)
-.select("email");
+
+const user =
+  await User.findById(
+    req.session.userId
+  ).select(
+    "email usdBalance btcBalance createdAt"
+  );
 
 if (!user) {
+
   req.session.destroy(() => {});
 
   return res.status(401).json({
     message: "User not found"
   });
+
 }
 
 res.json({
-  email: user.email
+  email: user.email,
+  usdBalance: user.usdBalance,
+  btcBalance: user.btcBalance,
+  createdAt: user.createdAt
 });
 
 } catch (error) {
-console.error("Profile error:", error);
+
+console.error(
+  "Profile error:",
+  error
+);
 
 res.status(500).json({
   message: "Unable to load account"
 });
 
 }
+
 });
 
-app.post("/logout", (req, res) => {
-req.session.destroy((error) => {
-if (error) {
-return res.status(500).json({
-message: "Logout failed"
-});
+/* =========================
+USER TRANSACTIONS
+========================= */
+
+app.get(
+"/transactions",
+requireLogin,
+async (req, res) => {
+
+try {
+
+  const transactions =
+    await Transaction.find({
+      userId: req.session.userId
+    })
+    .sort({ createdAt: -1 })
+    .limit(100);
+
+  res.json({
+    transactions
+  });
+
+} catch (error) {
+
+  console.error(
+    "Transaction error:",
+    error
+  );
+
+  res.status(500).json({
+    message:
+      "Unable to load transactions"
+  });
+
 }
 
-res.clearCookie("cityfive.sid");
+}
+);
+
+/* =========================
+LOGOUT
+========================= */
+
+app.post("/logout", (req, res) => {
+
+req.session.destroy((error) => {
+
+if (error) {
+
+  return res.status(500).json({
+    message: "Logout failed"
+  });
+
+}
+
+res.clearCookie(
+  "cityfive.sid"
+);
 
 res.json({
   message: "Logged out successfully"
 });
 
 });
+
 });
 
-const PORT = process.env.PORT || 3000;
+/* =========================
+SERVER
+========================= */
 
-app.listen(PORT, "0.0.0.0", () => {
-console.log("Server running on port " + PORT);
-});
+const PORT =
+process.env.PORT || 3000;
 
-mongoose.connect(process.env.MONGO_URI)
+app.listen(
+PORT,
+"0.0.0.0",
+() => {
+
+console.log(
+  "Server running on port " + PORT
+);
+
+}
+);
+
+/* =========================
+DATABASE
+========================= */
+
+mongoose.connect(
+process.env.MONGO_URI
+)
 .then(() => {
+
 console.log("DB connected");
+
 })
 .catch((error) => {
-console.error("Database connection failed:", error);
+
+console.error(
+"Database connection failed:",
+error
+);
+
 });
