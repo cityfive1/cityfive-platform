@@ -945,20 +945,29 @@ app.post(
   "/sandbox/request-password-reset",
   async (req, res, next) => {
     try {
-      const resetKey =
-  String(
-    req.body.resetKey || ""
-  ).trim();
+      const email =
+        String(
+          req.body.email || ""
+        )
+          .trim()
+          .toLowerCase();
 
-if (
-  !SANDBOX_RESET_KEY ||
-  resetKey !== SANDBOX_RESET_KEY
-) {
-  return res.status(403).json({
-    ok: false,
-    error: "Invalid sandbox reset key."
-  });
-}
+      const resetKey =
+        String(
+          req.body.resetKey || ""
+        ).trim();
+
+      if (
+        !SANDBOX_RESET_KEY ||
+        resetKey !== SANDBOX_RESET_KEY
+      ) {
+        return res.status(403).json({
+          ok: false,
+          error:
+            "Invalid sandbox reset key."
+        });
+      }
+
       const user =
         await User.findOne({
           email
@@ -988,14 +997,14 @@ if (
       });
 
       await PasswordReset.create({
-        tokenHash: sha256(
-          rawToken
-        ),
+        tokenHash:
+          sha256(rawToken),
         userId: user._id,
-        expiresAt: new Date(
-          Date.now() +
-            30 * 60 * 1000
-        )
+        expiresAt:
+          new Date(
+            Date.now() +
+              30 * 60 * 1000
+          )
       });
 
       /*
@@ -1049,9 +1058,8 @@ app.post(
 
       const reset =
         await PasswordReset.findOne({
-          tokenHash: sha256(
-            token
-          ),
+          tokenHash:
+            sha256(token),
           usedAt: null,
           expiresAt: {
             $gt: new Date()
@@ -1105,8 +1113,10 @@ app.post(
       });
 
       await audit({
-        userId: user._id,
-        actorId: user._id,
+        userId:
+          user._id,
+        actorId:
+          user._id,
         action:
           "SANDBOX_PASSWORD_RESET",
         ip: req.ip
@@ -1122,6 +1132,7 @@ app.post(
     }
   }
 );
+    
 
 /* ---------- KYC ---------- */
 
