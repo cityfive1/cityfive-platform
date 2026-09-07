@@ -1776,6 +1776,26 @@ app.get(
     }
   }
 );
+/* ---------- logout ---------- */
+
+app.post(
+  "/logout",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      await AuthToken.deleteOne({
+        _id: req.authToken._id
+      });
+
+      res.json({
+        ok: true,
+        message: "Logged out successfully."
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
 /* ---------- admin ---------- */
 
 app.get(
