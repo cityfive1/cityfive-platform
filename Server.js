@@ -951,7 +951,12 @@ app.post(
         )
           .trim()
           .toLowerCase();
-
+      if (!SANDBOX_RESET_KEY || resetKey !== SANDBOX_RESET_KEY) {
+  return res.status(403).json({
+    ok: false,
+    error: "Invalid sandbox reset key."
+  });
+}
       const user =
         await User.findOne({
           email
