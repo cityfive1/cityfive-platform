@@ -1,6 +1,8 @@
 "use strict";
 
-// CityFive sandbox deployment trigger
+// CityFive Holdings Ltd
+// Phase 1 — SANDBOX ONLY
+// No real BTC is moved or held by this application.
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -11,38 +13,67 @@ const OpenAI = require("openai");
 
 const app = express();
 
+/* =========================================================
+   CONFIGURATION
+========================================================= */
+
 const PORT = Number(process.env.PORT || 3000);
-const MONGO_URI = process.env.MONGO_URI || "";
+
+const MONGO_URI =
+  process.env.MONGO_URI || "";
+
 const FRONTEND_ORIGIN =
-  process.env.FRONTEND_ORIGIN || "https://cityfive1.github.io";
-const SESSION_SECRET = process.env.SESSION_SECRET || "";
+  process.env.FRONTEND_ORIGIN ||
+  "https://cityfive1.github.io";
+
+const SESSION_SECRET =
+  process.env.SESSION_SECRET || "";
+
 const PLATFORM_MODE = String(
   process.env.PLATFORM_MODE || "SANDBOX"
 ).toUpperCase();
+
 const REAL_FUNDS_ENABLED =
   process.env.REAL_FUNDS_ENABLED === "true";
+
 const IS_SANDBOX =
-  PLATFORM_MODE === "SANDBOX" && !REAL_FUNDS_ENABLED;
+  PLATFORM_MODE === "SANDBOX" &&
+  !REAL_FUNDS_ENABLED;
+
 const SANDBOX_RESET_KEY =
   process.env.SANDBOX_RESET_KEY || "";
+
 const OPENAI_API_KEY =
   process.env.OPENAI_API_KEY || "";
+
 const OPENAI_MODEL =
   process.env.OPENAI_MODEL || "gpt-5.5";
+
+/* =========================================================
+   SAFETY CHECKS
+========================================================= */
 
 if (!MONGO_URI || !SESSION_SECRET) {
   console.error(
     "MONGO_URI and SESSION_SECRET are required."
   );
+
   process.exit(1);
 }
 
 if (!IS_SANDBOX) {
   console.error(
-    "Phase 1 build is sandbox-only. Set PLATFORM_MODE=SANDBOX and REAL_FUNDS_ENABLED=false."
+    "Phase 1 build is sandbox-only. " +
+      "Set PLATFORM_MODE=SANDBOX and " +
+      "REAL_FUNDS_ENABLED=false."
   );
+
   process.exit(1);
 }
+
+/* =========================================================
+   CORS
+========================================================= */
 
 const allowedOrigins = new Set([
   FRONTEND_ORIGIN,
@@ -55,16 +86,23 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin(origin, cb) {
-      if (!origin || allowedOrigins.has(origin)) {
-        return cb(null, true);
+    origin(origin, callback) {
+      if (
+        !origin ||
+        allowedOrigins.has(origin)
+      ) {
+        return callback(null, true);
       }
 
-      return cb(
-        new Error("CORS origin not allowed")
+      return callback(
+        new Error(
+          "CORS origin not allowed"
+        )
       );
     },
+
     credentials: true,
+
     methods: [
       "GET",
       "POST",
@@ -73,6 +111,7 @@ app.use(
       "DELETE",
       "OPTIONS"
     ],
+
     allowedHeaders: [
       "Content-Type",
       "Authorization"
@@ -86,108 +125,123 @@ app.use(
   })
 );
 
-/* ---------- models ---------- */
+/* =========================================================
+   DATABASE MODELS
+========================================================= */
 
-const UserSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 100
+/* ---------- User ---------- */
+
+const UserSchema =
+  new mongoose.Schema(
+    {
+      name: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 100
+      },
+
+      email: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        trim: true,
+        index: true
+      },
+
+      passwordHash: {
+        type: String,
+        required: true
+      },
+
+      role: {
+        type: String,
+        enum: [
+          "user",
+          "admin"
+        ],
+        default: "user"
+      },
+
+      kycStatus: {
+        type: String,
+        enum: [
+          "not_started",
+          "pending",
+          "approved",
+          "rejected"
+        ],
+        default: "not_started"
+      },
+
+      accountStatus: {
+        type: String,
+        enum: [
+          "pending",
+          "active",
+          "suspended"
+        ],
+        default: "active"
+      },
+
+      active: {
+        type: Boolean,
+        default: true
+      },
+
+      lastLoginAt: {
+        type: Date,
+        default: null
+      }
     },
-
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-      index: true
-    },
-
-    passwordHash: {
-      type: String,
-      required: true
-    },
-
-    role: {
-      type: String,
-      enum: ["user", "admin"],
-      default: "user"
-    },
-
-    kycStatus: {
-      type: String,
-      enum: [
-        "not_started",
-        "pending",
-        "approved",
-        "rejected"
-      ],
-      default: "not_started"
-    },
-
-    accountStatus: {
-      type: String,
-      enum: [
-        "pending",
-        "active",
-        "suspended"
-      ],
-      default: "active"
-    },
-
-    active: {
-      type: Boolean,
-      default: true
-    },
-
-    lastLoginAt: {
-      type: Date,
-      default: null
+    {
+      timestamps: true
     }
-  },
-  {
-    timestamps: true
-  }
-);
+  );
 
-const User = mongoose.model(
-  "User",
-  UserSchema
-);
+const User =
+  mongoose.model(
+    "User",
+    UserSchema
+  );
 
-const AuthTokenSchema = new mongoose.Schema(
-  {
-    tokenHash: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true
+/* ---------- Authentication Token ---------- */
+
+const AuthTokenSchema =
+  new mongoose.Schema(
+    {
+      tokenHash: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+      },
+
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        index: true
+      },
+
+      expiresAt: {
+        type: Date,
+        required: true,
+        index: true
+      }
     },
-
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      index: true
-    },
-
-    expiresAt: {
-      type: Date,
-      required: true,
-      index: true
+    {
+      timestamps: true
     }
-  },
-  {
-    timestamps: true
-  }
-);
+  );
 
-const AuthToken = mongoose.model(
-  "AuthToken",
-  AuthTokenSchema
-);
+const AuthToken =
+  mongoose.model(
+    "AuthToken",
+    AuthTokenSchema
+  );
+
+/* ---------- Password Reset ---------- */
 
 const PasswordResetSchema =
   new mongoose.Schema(
@@ -227,30 +281,37 @@ const PasswordReset =
     PasswordResetSchema
   );
 
-const AccountSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      index: true
-    },
+/* ---------- Account ---------- */
 
-    currency: {
-      type: String,
-      enum: ["CAD", "USD", "BTC"],
-      required: true
-    },
+const AccountSchema =
+  new mongoose.Schema(
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        index: true
+      },
 
-    balance: {
-      type: Number,
-      default: 0,
-      min: 0
+      currency: {
+        type: String,
+        enum: [
+          "CAD",
+          "USD",
+          "BTC"
+        ],
+        required: true
+      },
+
+      balance: {
+        type: Number,
+        default: 0,
+        min: 0
+      }
+    },
+    {
+      timestamps: true
     }
-  },
-  {
-    timestamps: true
-  }
-);
+  );
 
 AccountSchema.index(
   {
@@ -262,79 +323,86 @@ AccountSchema.index(
   }
 );
 
-const Account = mongoose.model(
-  "Account",
-  AccountSchema
-);
+const Account =
+  mongoose.model(
+    "Account",
+    AccountSchema
+  );
 
-const DepositSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      index: true
+/* ---------- Deposit ---------- */
+
+const DepositSchema =
+  new mongoose.Schema(
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        index: true
+      },
+
+      asset: {
+        type: String,
+        default: "BTC"
+      },
+
+      amount: {
+        type: Number,
+        required: true
+      },
+
+      address: {
+        type: String,
+        default: null
+      },
+
+      txid: {
+        type: String,
+        default: null,
+        index: true
+      },
+
+      status: {
+        type: String,
+        enum: [
+          "pending",
+          "confirmed",
+          "rejected"
+        ],
+        default: "pending"
+      },
+
+      mode: {
+        type: String,
+        default: "SANDBOX"
+      },
+
+      confirmations: {
+        type: Number,
+        default: 0
+      },
+
+      requiredConfirmations: {
+        type: Number,
+        default: 3
+      },
+
+      creditApplied: {
+        type: Boolean,
+        default: false
+      }
     },
-
-    asset: {
-      type: String,
-      default: "BTC"
-    },
-
-    amount: {
-      type: Number,
-      required: true
-    },
-
-    address: {
-      type: String,
-      default: null
-    },
-
-    txid: {
-      type: String,
-      default: null,
-      index: true
-    },
-
-    status: {
-      type: String,
-      enum: [
-        "pending",
-        "confirmed",
-        "rejected"
-      ],
-      default: "pending"
-    },
-
-    mode: {
-      type: String,
-      default: "SANDBOX"
-    },
-
-    confirmations: {
-      type: Number,
-      default: 0
-    },
-
-    requiredConfirmations: {
-      type: Number,
-      default: 3
-    },
-
-    creditApplied: {
-      type: Boolean,
-      default: false
+    {
+      timestamps: true
     }
-  },
-  {
-    timestamps: true
-  }
-);
+  );
 
-const Deposit = mongoose.model(
-  "Deposit",
-  DepositSchema
-);
+const Deposit =
+  mongoose.model(
+    "Deposit",
+    DepositSchema
+  );
+
+/* ---------- Withdrawal ---------- */
 
 const WithdrawalSchema =
   new mongoose.Schema(
@@ -398,49 +466,52 @@ const Withdrawal =
     WithdrawalSchema
   );
 
-const LedgerSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      index: true
-    },
+/* ---------- Ledger ---------- */
 
-    currency: {
-      type: String,
-      required: true
-    },
+const LedgerSchema =
+  new mongoose.Schema(
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        index: true
+      },
 
-    type: {
-      type: String,
-      enum: [
-  "deposit",
-  "withdrawal",
-  "adjustment",
-  "withdrawal_refund"
-],
-      required: true
-    },
+      currency: {
+        type: String,
+        required: true
+      },
 
-    amount: {
-      type: Number,
-      required: true
-    },
+      type: {
+        type: String,
+        enum: [
+          "deposit",
+          "withdrawal",
+          "adjustment",
+          "withdrawal_refund"
+        ],
+        required: true
+      },
 
-    referenceId: {
-      type: String,
-      required: true
-    },
+      amount: {
+        type: Number,
+        required: true
+      },
 
-    description: {
-      type: String,
-      default: ""
+      referenceId: {
+        type: String,
+        required: true
+      },
+
+      description: {
+        type: String,
+        default: ""
+      }
+    },
+    {
+      timestamps: true
     }
-  },
-  {
-    timestamps: true
-  }
-);
+  );
 
 LedgerSchema.index(
   {
@@ -452,10 +523,13 @@ LedgerSchema.index(
   }
 );
 
-const Ledger = mongoose.model(
-  "Ledger",
-  LedgerSchema
-);
+const Ledger =
+  mongoose.model(
+    "Ledger",
+    LedgerSchema
+  );
+
+/* ---------- KYC ---------- */
 
 const KycProfileSchema =
   new mongoose.Schema(
@@ -504,45 +578,51 @@ const KycProfile =
     KycProfileSchema
   );
 
-const AuditSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      default: null,
-      index: true
-    },
+/* ---------- Audit ---------- */
 
-    actorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      default: null
-    },
+const AuditSchema =
+  new mongoose.Schema(
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        default: null,
+        index: true
+      },
 
-    action: {
-      type: String,
-      required: true
-    },
+      actorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        default: null
+      },
 
-    details: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {}
-    },
+      action: {
+        type: String,
+        required: true
+      },
 
-    ip: {
-      type: String,
-      default: ""
+      details: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
+      },
+
+      ip: {
+        type: String,
+        default: ""
+      }
+    },
+    {
+      timestamps: true
     }
-  },
-  {
-    timestamps: true
-  }
-);
+  );
 
-const Audit = mongoose.model(
-  "Audit",
-  AuditSchema
-);
+const Audit =
+  mongoose.model(
+    "Audit",
+    AuditSchema
+  );
 
-/* ---------- helpers ---------- */
+/* =========================================================
+   HELPERS
+========================================================= */
 
 const sha256 = (value) =>
   crypto
@@ -550,52 +630,71 @@ const sha256 = (value) =>
     .update(String(value))
     .digest("hex");
 
-const publicUser = (u) => ({
-  id: String(u._id),
-  name: u.name,
-  email: u.email,
-  role: u.role,
-  kycStatus: u.kycStatus,
-  accountStatus: u.accountStatus,
-  active: u.active
-});
+function publicUser(user) {
+  return {
+    id: String(user._id),
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    kycStatus: user.kycStatus,
+    accountStatus:
+      user.accountStatus,
+    active: user.active
+  };
+}
 
 async function audit(data) {
   try {
     await Audit.create(data);
-  } catch (e) {
+  } catch (error) {
     console.error(
-      "audit error:",
-      e.message
+      "Audit error:",
+      error.message
     );
   }
 }
 
 async function issueToken(userId) {
-  const raw =
+  const rawToken =
     crypto
       .randomBytes(48)
       .toString("hex");
 
   await AuthToken.create({
-    tokenHash: sha256(raw),
+    tokenHash:
+      sha256(rawToken),
+
     userId,
-    expiresAt: new Date(
-      Date.now() +
-        7 * 24 * 60 * 60 * 1000
-    )
+
+    expiresAt:
+      new Date(
+        Date.now() +
+          7 *
+            24 *
+            60 *
+            60 *
+            1000
+      )
   });
 
-  return raw;
+  return rawToken;
 }
 
 function bearer(req) {
   const value =
     req.headers.authorization || "";
 
-  return value.startsWith("Bearer ")
-    ? value.slice(7).trim()
-    : "";
+  if (
+    !value.startsWith(
+      "Bearer "
+    )
+  ) {
+    return "";
+  }
+
+  return value
+    .slice(7)
+    .trim();
 }
 
 async function requireAuth(
@@ -604,30 +703,37 @@ async function requireAuth(
   next
 ) {
   try {
-    const raw = bearer(req);
+    const rawToken =
+      bearer(req);
 
-    if (!raw) {
-      return res.status(401).json({
-        ok: false,
-        error:
-          "Authentication required."
-      });
+    if (!rawToken) {
+      return res
+        .status(401)
+        .json({
+          ok: false,
+          error:
+            "Authentication required."
+        });
     }
 
     const token =
       await AuthToken.findOne({
-        tokenHash: sha256(raw),
+        tokenHash:
+          sha256(rawToken),
+
         expiresAt: {
           $gt: new Date()
         }
       });
 
     if (!token) {
-      return res.status(401).json({
-        ok: false,
-        error:
-          "Invalid or expired session."
-      });
+      return res
+        .status(401)
+        .json({
+          ok: false,
+          error:
+            "Invalid or expired session."
+        });
     }
 
     const user =
@@ -641,42 +747,48 @@ async function requireAuth(
       user.accountStatus ===
         "suspended"
     ) {
-      return res.status(403).json({
-        ok: false,
-        error:
-          "Account unavailable."
-      });
+      return res
+        .status(403)
+        .json({
+          ok: false,
+          error:
+            "Account unavailable."
+        });
     }
 
     req.user = user;
     req.authToken = token;
 
     next();
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    next(error);
   }
 }
 
-async function requireAdmin(
+function requireAdmin(
   req,
   res,
   next
 ) {
   if (
+    !req.user ||
     req.user.role !== "admin"
   ) {
-    return res.status(403).json({
-      ok: false,
-      error:
-        "Admin access required."
-    });
+    return res
+      .status(403)
+      .json({
+        ok: false,
+        error:
+          "Admin access required."
+      });
   }
 
   next();
 }
 
 async function ensureAccounts(
-  userId
+  userId,
+  session = null
 ) {
   for (
     const currency of [
@@ -685,6 +797,14 @@ async function ensureAccounts(
       "BTC"
     ]
   ) {
+    const options = {
+      upsert: true
+    };
+
+    if (session) {
+      options.session = session;
+    }
+
     await Account.updateOne(
       {
         userId,
@@ -697,9 +817,7 @@ async function ensureAccounts(
           balance: 0
         }
       },
-      {
-        upsert: true
-      }
+      options
     );
   }
 }
@@ -707,41 +825,57 @@ async function ensureAccounts(
 function validBtcAmount(
   value
 ) {
-  const n = Number(value);
+  const amount =
+    Number(value);
 
   return (
-    Number.isFinite(n) &&
-    n > 0 &&
-    n <= 100
+    Number.isFinite(amount) &&
+    amount > 0 &&
+    amount <= 100
   );
 }
 
-/* ---------- public ---------- */
+/* =========================================================
+   PUBLIC ROUTES
+========================================================= */
 
-app.get("/", (req, res) => {
-  res.json({
-    service:
-      "CityFive Holdings Ltd",
-    status: "online",
-    mode: "SANDBOX",
-    realFundsEnabled: false,
-    phase: 1,
-    message:
-      "Sandbox build. No real BTC is moved."
-  });
-});
+app.get(
+  "/",
+  (req, res) => {
+    res.json({
+      service:
+        "CityFive Holdings Ltd",
+
+      status: "online",
+
+      mode: "SANDBOX",
+
+      realFundsEnabled: false,
+
+      phase: 1,
+
+      message:
+        "Sandbox build. No real BTC is moved."
+    });
+  }
+);
 
 app.get(
   "/health",
-  (req, res) =>
+  (req, res) => {
     res.json({
       ok: true,
       mode: "SANDBOX",
       realFundsEnabled: false
-    })
+    });
+  }
 );
 
-/* ---------- authentication ---------- */
+/* =========================================================
+   AUTHENTICATION
+========================================================= */
+
+/* ---------- Register ---------- */
 
 app.post(
   "/register",
@@ -778,11 +912,12 @@ app.post(
           });
       }
 
-      if (
+      const existingUser =
         await User.findOne({
           email
-        })
-      ) {
+        });
+
+      if (existingUser) {
         return res
           .status(409)
           .json({
@@ -802,7 +937,8 @@ app.post(
         await User.create({
           name,
           email,
-          passwordHash
+          passwordHash,
+          role: "user"
         });
 
       await ensureAccounts(
@@ -810,11 +946,17 @@ app.post(
       );
 
       await audit({
-        userId: user._id,
-        actorId: user._id,
+        userId:
+          user._id,
+
+        actorId:
+          user._id,
+
         action:
           "USER_REGISTERED",
-        ip: req.ip
+
+        ip:
+          req.ip
       });
 
       const token =
@@ -822,18 +964,24 @@ app.post(
           user._id
         );
 
-      res.status(201).json({
-        ok: true,
-        token,
-        user: publicUser(user),
-        mode: "SANDBOX",
-        realFundsEnabled: false
-      });
-    } catch (e) {
-      next(e);
+      res
+        .status(201)
+        .json({
+          ok: true,
+          token,
+          user:
+            publicUser(user),
+          mode: "SANDBOX",
+          realFundsEnabled:
+            false
+        });
+    } catch (error) {
+      next(error);
     }
   }
 );
+
+/* ---------- Login ---------- */
 
 app.post(
   "/login",
@@ -903,43 +1051,70 @@ app.post(
       res.json({
         ok: true,
         token,
-        user: publicUser(user),
+        user:
+          publicUser(user),
         mode: "SANDBOX",
-        realFundsEnabled: false
+        realFundsEnabled:
+          false
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
+
+/* ---------- Current User ---------- */
 
 app.get(
   "/me",
   requireAuth,
   async (req, res, next) => {
     try {
+      await ensureAccounts(
+        req.user._id
+      );
+
       const accounts =
         await Account.find({
-          userId: req.user._id
+          userId:
+            req.user._id
         }).sort({
           currency: 1
         });
 
       res.json({
         ok: true,
-        user: publicUser(
-          req.user
-        ),
+
+        user:
+          publicUser(
+            req.user
+          ),
+
         accounts,
+
         mode: "SANDBOX",
-        realFundsEnabled: false
+
+        realFundsEnabled:
+          false
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
-/* ---------- password reset ---------- */
+
+/* =========================================================
+   PASSWORD RESET — SANDBOX
+========================================================= */
+
+/*
+ * Sandbox password reset only.
+ *
+ * The SANDBOX_RESET_KEY must live in
+ * Abasthan environment variables.
+ *
+ * Never put the real key in GitHub.
+ */
 
 app.post(
   "/sandbox/request-password-reset",
@@ -959,13 +1134,16 @@ app.post(
 
       if (
         !SANDBOX_RESET_KEY ||
-        resetKey !== SANDBOX_RESET_KEY
+        resetKey !==
+          SANDBOX_RESET_KEY
       ) {
-        return res.status(403).json({
-          ok: false,
-          error:
-            "Invalid sandbox reset key."
-        });
+        return res
+          .status(403)
+          .json({
+            ok: false,
+            error:
+              "Invalid sandbox reset key."
+          });
       }
 
       const user =
@@ -974,13 +1152,14 @@ app.post(
         });
 
       /*
-       * Always return the same response so
-       * the endpoint does not reveal whether
+       * Do not reveal whether
        * an email exists.
        */
+
       if (!user) {
         return res.json({
           ok: true,
+
           message:
             "If the account exists, a reset request has been created."
         });
@@ -992,14 +1171,19 @@ app.post(
           .toString("hex");
 
       await PasswordReset.deleteMany({
-        userId: user._id,
+        userId:
+          user._id,
+
         usedAt: null
       });
 
       await PasswordReset.create({
         tokenHash:
           sha256(rawToken),
-        userId: user._id,
+
+        userId:
+          user._id,
+
         expiresAt:
           new Date(
             Date.now() +
@@ -1009,25 +1193,30 @@ app.post(
 
       /*
        * Sandbox only:
-       * return the token so the frontend
-       * can demonstrate the reset flow.
+       * return the reset token.
        *
-       * A production system should send
-       * the reset link through a trusted
-       * email provider instead.
+       * Production should use
+       * a trusted email provider.
        */
+
       res.json({
         ok: true,
+
         mode: "SANDBOX",
-        resetToken: rawToken,
+
+        resetToken:
+          rawToken,
+
         message:
           "Sandbox password reset created."
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
+
+/* ---------- Complete Password Reset ---------- */
 
 app.post(
   "/sandbox/reset-password",
@@ -1060,7 +1249,9 @@ app.post(
         await PasswordReset.findOne({
           tokenHash:
             sha256(token),
+
           usedAt: null,
+
           expiresAt: {
             $gt: new Date()
           }
@@ -1105,36 +1296,44 @@ app.post(
       await reset.save();
 
       /*
-       * Invalidate all existing sessions
-       * after a password change.
+       * Invalidate all sessions
+       * after password change.
        */
+
       await AuthToken.deleteMany({
-        userId: user._id
+        userId:
+          user._id
       });
 
       await audit({
         userId:
           user._id,
+
         actorId:
           user._id,
+
         action:
           "SANDBOX_PASSWORD_RESET",
-        ip: req.ip
+
+        ip:
+          req.ip
       });
 
       res.json({
         ok: true,
+
         message:
           "Password reset successfully."
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
-    
 
-/* ---------- KYC ---------- */
+/* =========================================================
+   KYC
+========================================================= */
 
 app.get(
   "/kyc",
@@ -1143,7 +1342,8 @@ app.get(
     try {
       let profile =
         await KycProfile.findOne({
-          userId: req.user._id
+          userId:
+            req.user._id
         });
 
       if (!profile) {
@@ -1151,6 +1351,7 @@ app.get(
           await KycProfile.create({
             userId:
               req.user._id,
+
             status:
               req.user.kycStatus ||
               "not_started"
@@ -1161,8 +1362,8 @@ app.get(
         ok: true,
         kyc: profile
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
@@ -1174,7 +1375,8 @@ app.post(
     try {
       let profile =
         await KycProfile.findOne({
-          userId: req.user._id
+          userId:
+            req.user._id
         });
 
       if (!profile) {
@@ -1201,24 +1403,30 @@ app.post(
       await audit({
         userId:
           req.user._id,
+
         actorId:
           req.user._id,
+
         action:
           "KYC_SUBMITTED",
-        ip: req.ip
+
+        ip:
+          req.ip
       });
 
       res.json({
         ok: true,
         kyc: profile
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
 
-/* ---------- accounts ---------- */
+/* =========================================================
+   ACCOUNTS
+========================================================= */
 
 app.get(
   "/accounts",
@@ -1239,25 +1447,30 @@ app.get(
 
       res.json({
         ok: true,
+
         accounts,
+
         mode: "SANDBOX",
-        realFundsEnabled: false
+
+        realFundsEnabled:
+          false
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
 
-/* ---------- sandbox BTC deposits ---------- */
+/* =========================================================
+   SANDBOX BTC DEPOSITS
+========================================================= */
 
 /*
- * Creates a PENDING simulated BTC deposit.
+ * Creates a pending simulated BTC deposit.
  *
- * IMPORTANT:
- * This does NOT represent real BTC.
- * The balance is NOT credited at creation.
+ * It does NOT credit the balance.
  */
+
 app.post(
   "/deposits/btc",
   requireAuth,
@@ -1291,23 +1504,31 @@ app.post(
           userId:
             req.user._id,
 
-          asset: "BTC",
+          asset:
+            "BTC",
 
           amount,
 
-          address: null,
+          address:
+            null,
 
-          txid: null,
+          txid:
+            null,
 
-          status: "pending",
+          status:
+            "pending",
 
-          mode: "SANDBOX",
+          mode:
+            "SANDBOX",
 
-          confirmations: 0,
+          confirmations:
+            0,
 
-          requiredConfirmations: 3,
+          requiredConfirmations:
+            3,
 
-          creditApplied: false
+          creditApplied:
+            false
         });
 
       await audit({
@@ -1329,185 +1550,222 @@ app.post(
           amount
         },
 
-        ip: req.ip
+        ip:
+          req.ip
       });
 
-      res.status(201).json({
-        ok: true,
+      res
+        .status(201)
+        .json({
+          ok: true,
 
-        mode: "SANDBOX",
+          mode:
+            "SANDBOX",
 
-        realFundsEnabled: false,
+          realFundsEnabled:
+            false,
 
-        message:
-          "Simulated BTC deposit created and is pending confirmation.",
+          message:
+            "Simulated BTC deposit created and is pending confirmation.",
 
-        deposit
-      });
-    } catch (e) {
-      next(e);
+          deposit
+        });
+    } catch (error) {
+      next(error);
     }
   }
 );
 
-/*
- * Confirm a sandbox BTC deposit.
- *
- * This is deliberately separate from creation.
- * It uses an atomic database update so the same
- * deposit cannot be credited twice.
- */
+/* ---------- Confirm Deposit ---------- */
+
 app.post(
   "/deposits/btc/:id/confirm",
   requireAuth,
   async (req, res, next) => {
+    const session =
+      await mongoose.startSession();
+
     try {
-      const deposit =
-        await Deposit.findOne({
-          _id: req.params.id,
-          userId:
-            req.user._id
-        });
+      let result = null;
 
-      if (!deposit) {
-        return res
-          .status(404)
-          .json({
-            ok: false,
-            error:
-              "Deposit not found."
-          });
-      }
+      await session.withTransaction(
+        async () => {
+          /*
+           * IMPORTANT:
+           * Only a pending deposit with
+           * creditApplied=false can be
+           * processed.
+           *
+           * This prevents duplicate
+           * credits during concurrent
+           * requests.
+           */
 
-      if (
-        deposit.status ===
-          "confirmed" &&
-        deposit.creditApplied
-      ) {
-        return res.json({
-          ok: true,
-          alreadyProcessed:
-            true,
-          deposit
-        });
-      }
+          const deposit =
+            await Deposit.findOne({
+              _id:
+                req.params.id,
 
-      if (
-        deposit.status !==
-        "pending"
-      ) {
-        return res
-          .status(400)
-          .json({
-            ok: false,
-            error:
-              "Only pending deposits can be confirmed."
-          });
-      }
+              userId:
+                req.user._id,
 
-      const session =
-        await mongoose.startSession();
+              status:
+                "pending",
 
-      try {
-        await session.withTransaction(
-          async () => {
-            const fresh =
+              creditApplied:
+                false
+            }).session(
+              session
+            );
+
+          if (!deposit) {
+            const existing =
               await Deposit.findOne({
                 _id:
-                  deposit._id,
+                  req.params.id,
+
                 userId:
-                  req.user._id,
-                status:
-                  "pending",
-                creditApplied:
-                  false
+                  req.user._id
               }).session(
                 session
               );
 
-            if (!fresh) {
+            if (
+              existing &&
+              existing.status ===
+                "confirmed" &&
+              existing.creditApplied
+            ) {
+              result = {
+                alreadyProcessed:
+                  true,
+
+                deposit:
+                  existing
+              };
+
               return;
             }
 
-            const account =
-              await Account.findOne({
-                userId:
-                  req.user._id,
-                currency:
-                  "BTC"
-              }).session(
-                session
+            const error =
+              new Error(
+                existing
+                  ? "Only pending deposits can be confirmed."
+                  : "Deposit not found."
               );
 
-            if (!account) {
-              throw new Error(
+            error.statusCode =
+              existing
+                ? 400
+                : 404;
+
+            throw error;
+          }
+
+          const account =
+            await Account.findOne({
+              userId:
+                req.user._id,
+
+              currency:
+                "BTC"
+            }).session(
+              session
+            );
+
+          if (!account) {
+            const error =
+              new Error(
                 "BTC account not found."
               );
-            }
 
-            account.balance =
-              Number(
-                account.balance
-              ) +
-              Number(
-                fresh.amount
-              );
+            error.statusCode =
+              404;
 
-            await account.save({
-              session
-            });
-
-            fresh.status =
-              "confirmed";
-
-            fresh.confirmations =
-              fresh.requiredConfirmations;
-
-            fresh.creditApplied =
-              true;
-
-            await fresh.save({
-              session
-            });
-
-            await Ledger.create(
-              [
-                {
-                  userId:
-                    req.user._id,
-
-                  currency:
-                    "BTC",
-
-                  type:
-                    "deposit",
-
-                  amount:
-                    fresh.amount,
-
-                  referenceId:
-                    String(
-                      fresh._id
-                    ),
-
-                  description:
-                    "Simulated sandbox BTC deposit confirmed."
-                }
-              ],
-              {
-                session
-              }
-            );
+            throw error;
           }
-        );
-      } finally {
-        await session.endSession();
-      }
 
-      const updated =
-        await Deposit.findById(
-          deposit._id
-        );
+          account.balance =
+            Number(
+              account.balance
+            ) +
+            Number(
+              deposit.amount
+            );
+
+          await account.save({
+            session
+          });
+
+          deposit.status =
+            "confirmed";
+
+          deposit.confirmations =
+            deposit.requiredConfirmations;
+
+          deposit.creditApplied =
+            true;
+
+          await deposit.save({
+            session
+          });
+
+          await Ledger.create(
+            [
+              {
+                userId:
+                  req.user._id,
+
+                currency:
+                  "BTC",
+
+                type:
+                  "deposit",
+
+                amount:
+                  deposit.amount,
+
+                referenceId:
+                  String(
+                    deposit._id
+                  ),
+
+                description:
+                  "Simulated sandbox BTC deposit confirmed."
+              }
+            ],
+            {
+              session
+            }
+          );
+
+          result = {
+            alreadyProcessed:
+              false,
+
+            deposit
+          };
+        }
+      );
+
+      await session.endSession();
+
+      if (
+        result.alreadyProcessed
+      ) {
+        return res.json({
+          ok: true,
+
+          alreadyProcessed:
+            true,
+
+          mode:
+            "SANDBOX",
+
+          deposit:
+            result.deposit
+        });
+      }
 
       await audit({
         userId:
@@ -1522,36 +1780,41 @@ app.post(
         details: {
           depositId:
             String(
-              deposit._id
+              result.deposit._id
             ),
 
           amount:
-            deposit.amount
+            result.deposit.amount
         },
 
-        ip: req.ip
+        ip:
+          req.ip
       });
 
       res.json({
         ok: true,
 
-        mode: "SANDBOX",
+        mode:
+          "SANDBOX",
 
-        realFundsEnabled: false,
+        realFundsEnabled:
+          false,
 
         message:
           "Simulated BTC deposit confirmed and credited.",
 
         deposit:
-          updated
+          result.deposit
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      await session.endSession();
+
+      next(error);
     }
   }
 );
 
-/* ---------- deposit history ---------- */
+/* ---------- Deposit History ---------- */
 
 app.get(
   "/deposits",
@@ -1570,18 +1833,33 @@ app.get(
         ok: true,
         deposits
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
 
-/* ---------- BTC withdrawals ---------- */
+/* =========================================================
+   SANDBOX BTC WITHDRAWALS
+========================================================= */
+
+/*
+ * Phase 1:
+ *
+ * - No real BTC is sent.
+ * - Balance reservation,
+ *   withdrawal creation and
+ *   ledger entry occur inside
+ *   one MongoDB transaction.
+ */
 
 app.post(
   "/withdrawals/btc",
   requireAuth,
   async (req, res, next) => {
+    const session =
+      await mongoose.startSession();
+
     try {
       const amount =
         Number(
@@ -1621,90 +1899,126 @@ app.post(
           });
       }
 
-      const account =
-        await Account.findOne({
-          userId:
-            req.user._id,
-          currency:
-            "BTC"
-        });
+      let withdrawal = null;
 
-      if (!account) {
-        return res
-          .status(404)
-          .json({
-            ok: false,
-            error:
-              "BTC account not found."
+      await session.withTransaction(
+        async () => {
+          const account =
+            await Account.findOne({
+              userId:
+                req.user._id,
+
+              currency:
+                "BTC"
+            }).session(
+              session
+            );
+
+          if (!account) {
+            const error =
+              new Error(
+                "BTC account not found."
+              );
+
+            error.statusCode =
+              404;
+
+            throw error;
+          }
+
+          if (
+            Number(
+              account.balance
+            ) < amount
+          ) {
+            const error =
+              new Error(
+                "Insufficient BTC balance."
+              );
+
+            error.statusCode =
+              400;
+
+            throw error;
+          }
+
+          /*
+           * Reserve the amount.
+           */
+
+          account.balance =
+            Number(
+              account.balance
+            ) - amount;
+
+          await account.save({
+            session
           });
-      }
 
-      if (
-        Number(
-          account.balance
-        ) < amount
-      ) {
-        return res
-          .status(400)
-          .json({
-            ok: false,
-            error:
-              "Insufficient BTC balance."
-          });
-      }
+          withdrawal =
+            await Withdrawal.create(
+              [
+                {
+                  userId:
+                    req.user._id,
 
-      /*
-       * Phase 1 reserves the amount by
-       * deducting it immediately.
-       *
-       * A production custody integration
-       * should use a proper withdrawal
-       * reservation/state machine.
-       */
-      account.balance =
-        Number(
-          account.balance
-        ) - amount;
+                  asset:
+                    "BTC",
 
-      await account.save();
+                  amount,
 
-      const withdrawal =
-        await Withdrawal.create({
-          userId:
-            req.user._id,
+                  address,
 
-          asset: "BTC",
+                  txid:
+                    null,
 
-          amount,
+                  status:
+                    "pending",
 
-          address,
+                  mode:
+                    "SANDBOX"
+                }
+              ],
+              {
+                session
+              }
+            );
 
-          txid: null,
+          withdrawal =
+            withdrawal[0];
 
-          status: "pending",
+          await Ledger.create(
+            [
+              {
+                userId:
+                  req.user._id,
 
-          mode: "SANDBOX"
-        });
+                currency:
+                  "BTC",
 
-      await Ledger.create({
-        userId:
-          req.user._id,
+                type:
+                  "withdrawal",
 
-        currency: "BTC",
+                amount:
+                  -amount,
 
-        type: "withdrawal",
+                referenceId:
+                  String(
+                    withdrawal._id
+                  ),
 
-        amount:
-          -amount,
+                description:
+                  "Sandbox BTC withdrawal request."
+              }
+            ],
+            {
+              session
+            }
+          );
+        }
+      );
 
-        referenceId:
-          String(
-            withdrawal._id
-          ),
-
-        description:
-          "Sandbox BTC withdrawal request."
-      });
+      await session.endSession();
 
       await audit({
         userId:
@@ -1727,26 +2041,35 @@ app.post(
           address
         },
 
-        ip: req.ip
+        ip:
+          req.ip
       });
 
-      res.status(201).json({
-        ok: true,
+      res
+        .status(201)
+        .json({
+          ok: true,
 
-        mode: "SANDBOX",
+          mode:
+            "SANDBOX",
 
-        realFundsEnabled: false,
+          realFundsEnabled:
+            false,
 
-        message:
-          "Simulated BTC withdrawal request created.",
+          message:
+            "Simulated BTC withdrawal request created.",
 
-        withdrawal
-      });
-    } catch (e) {
-      next(e);
+          withdrawal
+        });
+    } catch (error) {
+      await session.endSession();
+
+      next(error);
     }
   }
 );
+
+/* ---------- Withdrawal History ---------- */
 
 app.get(
   "/withdrawals",
@@ -1765,20 +2088,22 @@ app.get(
         ok: true,
         withdrawals
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
 
-/* ---------- transactions ---------- */
+/* =========================================================
+   TRANSACTIONS
+========================================================= */
 
 app.get(
   "/transactions",
   requireAuth,
   async (req, res, next) => {
     try {
-      const ledger =
+      const transactions =
         await Ledger.find({
           userId:
             req.user._id
@@ -1788,15 +2113,17 @@ app.get(
 
       res.json({
         ok: true,
-        transactions:
-          ledger
+        transactions
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
-/* ---------- logout ---------- */
+
+/* =========================================================
+   LOGOUT
+========================================================= */
 
 app.post(
   "/logout",
@@ -1804,19 +2131,27 @@ app.post(
   async (req, res, next) => {
     try {
       await AuthToken.deleteOne({
-        _id: req.authToken._id
+        _id:
+          req.authToken._id
       });
 
       res.json({
         ok: true,
-        message: "Logged out successfully."
+
+        message:
+          "Logged out successfully."
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
-/* ---------- admin ---------- */
+
+/* =========================================================
+   ADMIN
+========================================================= */
+
+/* ---------- Users ---------- */
 
 app.get(
   "/admin/users",
@@ -1826,7 +2161,9 @@ app.get(
     try {
       const users =
         await User.find()
-          .select("-passwordHash")
+          .select(
+            "-passwordHash"
+          )
           .sort({
             createdAt: -1
           });
@@ -1835,12 +2172,13 @@ app.get(
         ok: true,
         users
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
 
+/* ---------- Pending Withdrawals ---------- */
 
 app.get(
   "/admin/withdrawals",
@@ -1850,7 +2188,8 @@ app.get(
     try {
       const withdrawals =
         await Withdrawal.find({
-          status: "pending"
+          status:
+            "pending"
         }).sort({
           createdAt: -1
         });
@@ -1859,31 +2198,38 @@ app.get(
         ok: true,
         withdrawals
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
 
+/* ---------- Reject Withdrawal ---------- */
 
 app.post(
   "/admin/withdrawals/:id/reject",
   requireAuth,
   requireAdmin,
   async (req, res, next) => {
-    const dbSession =
+    const session =
       await mongoose.startSession();
 
     try {
-      let rejectedWithdrawal = null;
+      let rejectedWithdrawal =
+        null;
 
-      await dbSession.withTransaction(
+      await session.withTransaction(
         async () => {
           const withdrawal =
             await Withdrawal.findOne({
-              _id: req.params.id,
-              status: "pending"
-            }).session(dbSession);
+              _id:
+                req.params.id,
+
+              status:
+                "pending"
+            }).session(
+              session
+            );
 
           if (!withdrawal) {
             const error =
@@ -1891,17 +2237,24 @@ app.post(
                 "Pending withdrawal not found."
               );
 
-            error.statusCode = 404;
+            error.statusCode =
+              404;
+
             throw error;
           }
 
-          if (withdrawal.mode !== "SANDBOX") {
+          if (
+            withdrawal.mode !==
+            "SANDBOX"
+          ) {
             const error =
               new Error(
                 "Only sandbox withdrawals can be rejected by this route."
               );
 
-            error.statusCode = 400;
+            error.statusCode =
+              400;
+
             throw error;
           }
 
@@ -1909,8 +2262,12 @@ app.post(
             await Account.findOne({
               userId:
                 withdrawal.userId,
-              currency: "BTC"
-            }).session(dbSession);
+
+              currency:
+                "BTC"
+            }).session(
+              session
+            );
 
           if (!account) {
             const error =
@@ -1918,15 +2275,27 @@ app.post(
                 "BTC account not found."
               );
 
-            error.statusCode = 404;
+            error.statusCode =
+              404;
+
             throw error;
           }
 
-          account.balance +=
-            withdrawal.amount;
+          /*
+           * Refund the reserved
+           * sandbox balance.
+           */
+
+          account.balance =
+            Number(
+              account.balance
+            ) +
+            Number(
+              withdrawal.amount
+            );
 
           await account.save({
-            session: dbSession
+            session
           });
 
           withdrawal.status =
@@ -1936,10 +2305,12 @@ app.post(
             String(
               req.body.reason ||
                 "Rejected by administrator."
-            );
+            )
+              .trim()
+              .slice(0, 500);
 
           await withdrawal.save({
-            session: dbSession
+            session
           });
 
           await Ledger.create(
@@ -1948,7 +2319,8 @@ app.post(
                 userId:
                   withdrawal.userId,
 
-                currency: "BTC",
+                currency:
+                  "BTC",
 
                 type:
                   "withdrawal_refund",
@@ -1964,7 +2336,7 @@ app.post(
               }
             ],
             {
-              session: dbSession
+              session
             }
           );
 
@@ -1972,6 +2344,8 @@ app.post(
             withdrawal;
         }
       );
+
+      await session.endSession();
 
       await audit({
         userId:
@@ -1996,24 +2370,27 @@ app.post(
             rejectedWithdrawal.rejectionReason
         },
 
-        ip: req.ip
+        ip:
+          req.ip
       });
 
       res.json({
         ok: true,
+
         withdrawal:
           rejectedWithdrawal
       });
-    } catch (e) {
-      next(e);
-    } finally {
-      await dbSession.endSession();
+    } catch (error) {
+      await session.endSession();
+
+      next(error);
     }
   }
 );
 
-
-/* ---------- CityFive AI ---------- */
+/* =========================================================
+   CITYFIVE AI
+========================================================= */
 
 let aiClient = null;
 
@@ -2025,18 +2402,19 @@ if (OPENAI_API_KEY) {
     });
 }
 
-
 app.post(
   "/ai/chat",
   requireAuth,
   async (req, res, next) => {
     try {
       if (!aiClient) {
-        return res.status(503).json({
-          ok: false,
-          error:
-            "CityFive AI is not configured yet."
-        });
+        return res
+          .status(503)
+          .json({
+            ok: false,
+            error:
+              "CityFive AI is not configured yet."
+          });
       }
 
       const message =
@@ -2048,20 +2426,20 @@ app.post(
         !message ||
         message.length > 4000
       ) {
-        return res.status(400).json({
-          ok: false,
-          error:
-            "Enter a message up to 4000 characters."
-        });
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "Enter a message up to 4000 characters."
+          });
       }
-
 
       const accounts =
         await Account.find({
           userId:
             req.user._id
         }).lean();
-
 
       const deposits =
         await Deposit.find({
@@ -2074,7 +2452,6 @@ app.post(
           .limit(10)
           .lean();
 
-
       const withdrawals =
         await Withdrawal.find({
           userId:
@@ -2086,6 +2463,11 @@ app.post(
           .limit(10)
           .lean();
 
+      /*
+       * Only send the AI the
+       * information it actually
+       * needs.
+       */
 
       const safeContext = {
         user: {
@@ -2151,49 +2533,49 @@ app.post(
           )
       };
 
-
       const response =
-        await aiClient.responses.create({
-          model:
-            OPENAI_MODEL,
+        await aiClient.responses.create(
+          {
+            model:
+              OPENAI_MODEL,
 
-          instructions:
-            "You are CityFive AI, a support assistant for a cryptocurrency platform. " +
-            "The current application is a SANDBOX and has no real BTC funds. " +
-            "Never claim that sandbox balances are real. " +
-            "Never promise investment returns, guaranteed profits, or financial outcomes. " +
-            "You may explain account status, deposits, withdrawals, KYC, and transaction history using the supplied context. " +
-            "You cannot approve withdrawals, change balances, create transactions, or access private keys. " +
-            "If asked to perform a financial action, tell the user to use the appropriate CityFive workflow.",
+            instructions:
+              "You are CityFive AI, a support assistant for a cryptocurrency platform. " +
+              "The current application is a SANDBOX and has no real BTC funds. " +
+              "Never claim that sandbox balances are real. " +
+              "Never promise investment returns, guaranteed profits, or financial outcomes. " +
+              "You may explain account status, deposits, withdrawals, KYC, and transaction history using the supplied context. " +
+              "You cannot approve withdrawals, change balances, create transactions, or access private keys. " +
+              "If asked to perform a financial action, tell the user to use the appropriate CityFive workflow.",
 
-          input: [
-            {
-              role:
-                "user",
+            input: [
+              {
+                role:
+                  "user",
 
-              content: [
-                {
-                  type:
-                    "input_text",
+                content: [
+                  {
+                    type:
+                      "input_text",
 
-                  text:
-                    `Account context: ${JSON.stringify(
-                      safeContext
-                    )}`
-                },
+                    text:
+                      `Account context: ${JSON.stringify(
+                        safeContext
+                      )}`
+                  },
 
-                {
-                  type:
-                    "input_text",
+                  {
+                    type:
+                      "input_text",
 
-                  text:
-                    message
-                }
-              ]
-            }
-          ]
-        });
-
+                    text:
+                      message
+                  }
+                ]
+              }
+            ]
+          }
+        );
 
       res.json({
         ok: true,
@@ -2202,45 +2584,50 @@ app.post(
           response.output_text ||
           "I couldn't generate a response."
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   }
 );
 
-
-/* ---------- error handling ---------- */
+/* =========================================================
+   ERROR HANDLING
+========================================================= */
 
 app.use(
   (
-    err,
+    error,
     req,
     res,
     next
   ) => {
     console.error(
       "Unhandled error:",
-      err
+      error
     );
 
     const status =
       Number(
-        err.statusCode || 500
+        error.statusCode ||
+          500
       );
 
-    res.status(status).json({
-      ok: false,
+    res
+      .status(status)
+      .json({
+        ok: false,
 
-      error:
-        status >= 500
-          ? "Server error."
-          : err.message
-    });
+        error:
+          status >= 500
+            ? "Server error."
+            : error.message
+      });
   }
 );
 
-
-/* ---------- startup ---------- */
+/* =========================================================
+   START SERVER
+========================================================= */
 
 async function start() {
   await mongoose.connect(
@@ -2270,12 +2657,11 @@ async function start() {
   );
 }
 
-
 start().catch(
-  (err) => {
+  (error) => {
     console.error(
       "Startup failed:",
-      err
+      error
     );
 
     process.exit(1);
