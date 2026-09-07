@@ -1775,3 +1775,468 @@ app.get(
     }
   }
 );
+/* ---------- admin ---------- */
+
+app.get(
+  "/admin/users",
+  requireAuth,
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const users =
+        await User.find()
+          .select("-passwordHash")
+          .sort({
+            createdAt: -1
+          });
+
+      res.json({
+        ok: true,
+        users
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+
+app.get(
+  "/admin/withdrawals",
+  requireAuth,
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const withdrawals =
+        await Withdrawal.find({
+          status: "pending"
+        }).sort({
+          createdAt: -1
+        });
+
+      res.json({
+        ok: true,
+        withdrawals
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+
+app.post(
+  "/admin/withdrawals/:id/reject",
+  requireAuth,
+  requireAdmin,
+  async (req, res, next) => {
+    const dbSession =
+      await mongoose.startSession();
+
+    try {
+      let rejectedWithdrawal = null;
+
+      await dbSession.withTransaction(
+        async () => {
+          const withdrawal =
+            await Withdrawal.findOne({
+              _id: req.params.id,
+              status: "pending"
+            }).session(dbSession);
+
+          if (!withdrawal) {
+            const error =
+              new Error(
+                "Pending withdrawal not found."
+              );
+
+            error.statusCode = 404;
+            throw error;
+          }
+
+          if (withdrawal.mode !== "SANDBOX") {
+            const error =
+              new Error(
+                "Only sandbox withdrawals can be rejected by this route."
+              );
+
+            error.statusCode = 400;
+            throw error;
+          }
+
+          const account =
+            await Account.findOne({
+              userId:
+                withdrawal.userId,
+              currency: "BTC"
+            }).session(dbSession);
+
+          if (!account) {
+            const error =
+              new Error(
+                "BTC account not found."
+              );
+
+            error.statusCode = 404;
+            throw error;
+          }
+
+          account.balance +=
+            withdrawal.amount;
+
+          await account.save({
+            session: dbSession
+          });
+
+          withdrawal.status =
+            "rejected";
+
+          withdrawal.rejectionReason =
+            String(
+              req.body.reason ||
+                "Rejected by administrator."
+            );
+
+          await withdrawal.save({
+            session: dbSession
+          });
+
+          await Ledger.create(
+            [
+              {
+                userId:
+                  withdrawal.userId,
+
+                currency: "BTC",
+
+                type:
+                  "WITHDRAWAL_REFUND",
+
+                amount:
+                  withdrawal.amount,
+
+                referenceId:
+                  `refund-${withdrawal._id}`,
+
+                description:
+                  "Sandbox withdrawal refund."
+              }
+            ],
+            {
+              session: dbSession
+            }
+          );
+
+          rejectedWithdrawal =
+            withdrawal;
+        }
+      );
+
+      await audit({
+        userId:
+          rejectedWithdrawal.userId,
+
+        actorId:
+          req.user._id,
+
+        action:
+          "SANDBOX_WITHDRAWAL_REJECTED",
+
+        details: {
+          withdrawalId:
+            String(
+              rejectedWithdrawal._id
+            ),
+
+          amount:
+            rejectedWithdrawal.amount,
+
+          reason:
+            rejectedWithdrawal.rejectionReason
+        },
+
+        ip: req.ip
+      });
+
+      res.json({
+        ok: true,
+        withdrawal:
+          rejectedWithdrawal
+      });
+    } catch (e) {
+      next(e);
+    } finally {
+      await dbSession.endSession();
+    }
+  }
+);
+
+
+/* ---------- CityFive AI ---------- */
+
+let aiClient = null;
+
+if (OPENAI_API_KEY) {
+  aiClient =
+    new OpenAI({
+      apiKey:
+        OPENAI_API_KEY
+    });
+}
+
+
+app.post(
+  "/ai/chat",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      if (!aiClient) {
+        return res.status(503).json({
+          ok: false,
+          error:
+            "CityFive AI is not configured yet."
+        });
+      }
+
+      const message =
+        String(
+          req.body.message || ""
+        ).trim();
+
+      if (
+        !message ||
+        message.length > 4000
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error:
+            "Enter a message up to 4000 characters."
+        });
+      }
+
+
+      const accounts =
+        await Account.find({
+          userId:
+            req.user._id
+        }).lean();
+
+
+      const deposits =
+        await Deposit.find({
+          userId:
+            req.user._id
+        })
+          .sort({
+            createdAt: -1
+          })
+          .limit(10)
+          .lean();
+
+
+      const withdrawals =
+        await Withdrawal.find({
+          userId:
+            req.user._id
+        })
+          .sort({
+            createdAt: -1
+          })
+          .limit(10)
+          .lean();
+
+
+      const safeContext = {
+        user: {
+          name:
+            req.user.name,
+
+          kycStatus:
+            req.user.kycStatus,
+
+          accountStatus:
+            req.user.accountStatus
+        },
+
+        accounts:
+          accounts.map(
+            (account) => ({
+              currency:
+                account.currency,
+
+              balance:
+                account.balance
+            })
+          ),
+
+        recentDeposits:
+          deposits.map(
+            (deposit) => ({
+              amount:
+                deposit.amount,
+
+              asset:
+                deposit.asset,
+
+              status:
+                deposit.status,
+
+              confirmations:
+                deposit.confirmations,
+
+              requiredConfirmations:
+                deposit.requiredConfirmations,
+
+              createdAt:
+                deposit.createdAt
+            })
+          ),
+
+        recentWithdrawals:
+          withdrawals.map(
+            (withdrawal) => ({
+              amount:
+                withdrawal.amount,
+
+              asset:
+                withdrawal.asset,
+
+              status:
+                withdrawal.status,
+
+              createdAt:
+                withdrawal.createdAt
+            })
+          )
+      };
+
+
+      const response =
+        await aiClient.responses.create({
+          model:
+            OPENAI_MODEL,
+
+          instructions:
+            "You are CityFive AI, a support assistant for a cryptocurrency platform. " +
+            "The current application is a SANDBOX and has no real BTC funds. " +
+            "Never claim that sandbox balances are real. " +
+            "Never promise investment returns, guaranteed profits, or financial outcomes. " +
+            "You may explain account status, deposits, withdrawals, KYC, and transaction history using the supplied context. " +
+            "You cannot approve withdrawals, change balances, create transactions, or access private keys. " +
+            "If asked to perform a financial action, tell the user to use the appropriate CityFive workflow.",
+
+          input: [
+            {
+              role:
+                "user",
+
+              content: [
+                {
+                  type:
+                    "input_text",
+
+                  text:
+                    `Account context: ${JSON.stringify(
+                      safeContext
+                    )}`
+                },
+
+                {
+                  type:
+                    "input_text",
+
+                  text:
+                    message
+                }
+              ]
+            }
+          ]
+        });
+
+
+      res.json({
+        ok: true,
+
+        message:
+          response.output_text ||
+          "I couldn't generate a response."
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+
+/* ---------- error handling ---------- */
+
+app.use(
+  (
+    err,
+    req,
+    res,
+    next
+  ) => {
+    console.error(
+      "Unhandled error:",
+      err
+    );
+
+    const status =
+      Number(
+        err.statusCode || 500
+      );
+
+    res.status(status).json({
+      ok: false,
+
+      error:
+        status >= 500
+          ? "Server error."
+          : err.message
+    });
+  }
+);
+
+
+/* ---------- startup ---------- */
+
+async function start() {
+  await mongoose.connect(
+    MONGO_URI
+  );
+
+  console.log(
+    "DB connected"
+  );
+
+  console.log(
+    "Platform mode: SANDBOX"
+  );
+
+  console.log(
+    "Real funds enabled: false"
+  );
+
+  app.listen(
+    PORT,
+    "0.0.0.0",
+    () => {
+      console.log(
+        `Server listening on port ${PORT}`
+      );
+    }
+  );
+}
+
+
+start().catch(
+  (err) => {
+    console.error(
+      "Startup failed:",
+      err
+    );
+
+    process.exit(1);
+  }
+);
