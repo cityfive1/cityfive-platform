@@ -1911,7 +1911,7 @@ app.post(
                 currency: "BTC",
 
                 type:
-                  "WITHDRAWAL_REFUND",
+                  "withdrawal_refund",
 
                 amount:
                   withdrawal.amount,
