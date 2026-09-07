@@ -945,13 +945,15 @@ app.post(
   "/sandbox/request-password-reset",
   async (req, res, next) => {
     try {
-      const email =
-        String(
-          req.body.email || ""
-        )
-          .trim()
-          .toLowerCase();
-      if (!SANDBOX_RESET_KEY || resetKey !== SANDBOX_RESET_KEY) {
+      const resetKey =
+  String(
+    req.body.resetKey || ""
+  ).trim();
+
+if (
+  !SANDBOX_RESET_KEY ||
+  resetKey !== SANDBOX_RESET_KEY
+) {
   return res.status(403).json({
     ok: false,
     error: "Invalid sandbox reset key."
