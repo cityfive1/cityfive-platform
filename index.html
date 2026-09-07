@@ -1,1 +1,2625 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CityFive Holdings Ltd</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #080a0f;
+      color: #f5f5f5;
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .page {
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    /* =========================
+       AUTH
+    ========================= */
+
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 25px;
+      background:
+        radial-gradient(circle at top right, rgba(199, 164, 91, 0.15), transparent 35%),
+        radial-gradient(circle at bottom left, rgba(199, 164, 91, 0.08), transparent 35%),
+        #080a0f;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 440px;
+      background: #10131a;
+      border: 1px solid #292e38;
+      border-radius: 22px;
+      padding: 35px;
+      box-shadow: 0 25px 80px rgba(0,0,0,.45);
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .brand-mark {
+      width: 62px;
+      height: 62px;
+      margin: auto;
+      border: 1px solid #c7a45b;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #c7a45b;
+      font-size: 25px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    .brand h1 {
+      margin-top: 15px;
+      font-size: 25px;
+      letter-spacing: 2px;
+    }
+
+    .brand p {
+      margin-top: 7px;
+      color: #9ca3af;
+      font-size: 13px;
+    }
+
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 25px;
+      border-bottom: 1px solid #292e38;
+    }
+
+    .auth-tab {
+      flex: 1;
+      background: transparent;
+      border: 0;
+      color: #8d94a0;
+      padding: 13px;
+      border-bottom: 2px solid transparent;
+    }
+
+    .auth-tab.active {
+      color: #c7a45b;
+      border-bottom-color: #c7a45b;
+    }
+
+    .form-group {
+      margin-bottom: 17px;
+    }
+
+    .form-group label {
+      display: block;
+      color: #b8bec8;
+      font-size: 13px;
+      margin-bottom: 7px;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      background: #0a0d12;
+      color: #fff;
+      border: 1px solid #303641;
+      border-radius: 11px;
+      padding: 13px 14px;
+      outline: none;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #c7a45b;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+    }
+
+    .primary-btn {
+      width: 100%;
+      border: 0;
+      border-radius: 11px;
+      padding: 14px;
+      background: #c7a45b;
+      color: #0a0b0e;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+
+    .primary-btn:hover {
+      filter: brightness(1.08);
+    }
+
+    .secondary-btn {
+      border: 1px solid #3a404c;
+      background: #151922;
+      color: #e6e7ea;
+      border-radius: 10px;
+      padding: 11px 15px;
+    }
+
+    .secondary-btn:hover {
+      border-color: #c7a45b;
+      color: #c7a45b;
+    }
+
+    .danger-btn {
+      border: 1px solid #633b3b;
+      background: #241416;
+      color: #ffb0b0;
+      border-radius: 10px;
+      padding: 11px 15px;
+    }
+
+    .message {
+      padding: 11px 13px;
+      border-radius: 9px;
+      margin-bottom: 15px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .message.error {
+      background: #2b1518;
+      border: 1px solid #63333a;
+      color: #ffb8bf;
+    }
+
+    .message.success {
+      background: #13241b;
+      border: 1px solid #315a42;
+      color: #aee6bd;
+    }
+
+    /* =========================
+       DASHBOARD
+    ========================= */
+
+    .dashboard {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 80% 0%, rgba(199,164,91,.08), transparent 30%),
+        #080a0f;
+    }
+
+    .topbar {
+      height: 72px;
+      border-bottom: 1px solid #252a33;
+      background: rgba(8,10,15,.94);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(12px);
+    }
+
+    .top-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .top-brand-mark {
+      width: 38px;
+      height: 38px;
+      border: 1px solid #c7a45b;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #c7a45b;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .top-brand strong {
+      display: block;
+      font-size: 14px;
+      letter-spacing: 1.4px;
+    }
+
+    .top-brand span {
+      display: block;
+      color: #777f8d;
+      font-size: 10px;
+      margin-top: 3px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sandbox-pill {
+      border: 1px solid #735f2e;
+      color: #d7ba6e;
+      background: #19160e;
+      border-radius: 30px;
+      padding: 7px 12px;
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .container {
+      max-width: 1250px;
+      margin: auto;
+      padding: 32px 24px 60px;
+    }
+
+    .hero {
+      margin-bottom: 25px;
+    }
+
+    .hero small {
+      color: #c7a45b;
+      letter-spacing: 2px;
+      font-size: 10px;
+    }
+
+    .hero h2 {
+      font-size: 30px;
+      margin-top: 8px;
+    }
+
+    .hero p {
+      color: #8d94a0;
+      margin-top: 8px;
+      max-width: 650px;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .sandbox-banner {
+      border: 1px solid #735f2e;
+      background: #17140d;
+      color: #d8c17f;
+      border-radius: 14px;
+      padding: 15px 17px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .sandbox-banner strong {
+      color: #fff0b8;
+    }
+
+    /* BALANCE CARDS */
+
+    .balance-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 17px;
+      margin-bottom: 25px;
+    }
+
+    .balance-card {
+      background: #10131a;
+      border: 1px solid #292e38;
+      border-radius: 17px;
+      padding: 22px;
+      min-height: 145px;
+    }
+
+    .balance-label {
+      color: #858c98;
+      font-size: 12px;
+      margin-bottom: 15px;
+    }
+
+    .balance-value {
+      font-size: 25px;
+      font-weight: bold;
+    }
+
+    .balance-sub {
+      margin-top: 9px;
+      color: #737b88;
+      font-size: 11px;
+    }
+
+    /* ACTIONS */
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 13px;
+      margin-bottom: 25px;
+    }
+
+    .action-card {
+      background: #10131a;
+      border: 1px solid #292e38;
+      border-radius: 15px;
+      padding: 19px;
+      text-align: left;
+      color: #fff;
+    }
+
+    .action-card:hover {
+      border-color: #c7a45b;
+      transform: translateY(-1px);
+    }
+
+    .action-icon {
+      color: #c7a45b;
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    .action-card strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .action-card span {
+      display: block;
+      color: #777f8d;
+      font-size: 11px;
+      margin-top: 5px;
+      line-height: 1.4;
+    }
+
+    /* SECTIONS */
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: 1.4fr .8fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: #10131a;
+      border: 1px solid #292e38;
+      border-radius: 17px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .panel-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .panel-title h3 {
+      font-size: 16px;
+    }
+
+    .panel-title span {
+      color: #707784;
+      font-size: 11px;
+    }
+
+    /* TRANSACTIONS */
+
+    .transaction {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid #222731;
+      gap: 15px;
+    }
+
+    .transaction:last-child {
+      border-bottom: 0;
+    }
+
+    .tx-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .tx-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      background: #181c24;
+      border: 1px solid #303641;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #c7a45b;
+      flex-shrink: 0;
+    }
+
+    .tx-description {
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .tx-date {
+      font-size: 10px;
+      color: #6e7582;
+      margin-top: 4px;
+    }
+
+    .tx-amount {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .positive {
+      color: #8fdda5;
+    }
+
+    .negative {
+      color: #ff9d9d;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 25px 5px;
+      color: #666e7a;
+      font-size: 12px;
+    }
+
+    /* STATUS */
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #222731;
+      font-size: 12px;
+    }
+
+    .status-row:last-child {
+      border-bottom: 0;
+    }
+
+    .status-label {
+      color: #858c98;
+    }
+
+    .status-value {
+      color: #d7dbe2;
+    }
+
+    .status-pending {
+      color: #d8ba67;
+    }
+
+    .status-approved {
+      color: #8fdda5;
+    }
+
+    /* AI */
+
+    .ai-panel {
+      height: 540px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ai-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 2px;
+      margin-bottom: 12px;
+    }
+
+    .ai-message {
+      max-width: 88%;
+      padding: 11px 13px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .ai-message.bot {
+      background: #181c24;
+      border: 1px solid #2b303a;
+      color: #d9dce2;
+    }
+
+    .ai-message.user {
+      background: #c7a45b;
+      color: #0a0b0e;
+      margin-left: auto;
+    }
+
+    .ai-input {
+      display: flex;
+      gap: 8px;
+    }
+
+    .ai-input input {
+      flex: 1;
+    }
+
+    .ai-input button {
+      width: 80px;
+      border: 0;
+      border-radius: 10px;
+      background: #c7a45b;
+      font-weight: bold;
+    }
+
+    /* MODAL */
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 470px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: #10131a;
+      border: 1px solid #303641;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 30px 100px rgba(0,0,0,.6);
+    }
+
+    .modal h3 {
+      margin-bottom: 8px;
+    }
+
+    .modal-description {
+      color: #858c98;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 9px;
+      margin-top: 18px;
+    }
+
+    .modal-actions button {
+      flex: 1;
+    }
+
+    .deposit-result {
+      margin-top: 17px;
+      border: 1px solid #303641;
+      border-radius: 12px;
+      padding: 14px;
+      background: #0b0e13;
+    }
+
+    .deposit-result p {
+      font-size: 12px;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .deposit-code {
+      word-break: break-all;
+      color: #c7a45b;
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    .footer {
+      text-align: center;
+      color: #555d68;
+      font-size: 10px;
+      line-height: 1.6;
+      padding-top: 20px;
+    }
+
+    /* MOBILE */
+
+    @media (max-width: 900px) {
+      .balance-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .action-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .section-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .topbar {
+        padding: 0 14px;
+      }
+
+      .top-brand strong {
+        font-size: 11px;
+      }
+
+      .sandbox-pill {
+        display: none;
+      }
+
+      .container {
+        padding: 25px 14px 50px;
+      }
+
+      .hero h2 {
+        font-size: 25px;
+      }
+
+      .action-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .action-card {
+        padding: 15px;
+      }
+
+      .auth-card {
+        padding: 25px 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =========================
+       LOGIN / REGISTER
+  ========================== -->
+
+  <div id="authPage" class="page auth-page">
+
+    <div class="auth-card">
+
+      <div class="brand">
+        <div class="brand-mark">C5</div>
+        <h1>CITYFIVE</h1>
+        <p>Holdings Ltd</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button id="loginTab" class="auth-tab active" onclick="showAuth('login')">
+          Login
+        </button>
+
+        <button id="registerTab" class="auth-tab" onclick="showAuth('register')">
+          Create account
+        </button>
+      </div>
+
+      <div id="authMessage"></div>
+
+      <!-- LOGIN -->
+
+      <form id="loginForm">
+
+        <div class="form-group">
+          <label>Email</label>
+          <input
+            id="loginEmail"
+            type="email"
+            placeholder="you@example.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <input
+            id="loginPassword"
+            type="password"
+            placeholder="Password"
+            required
+          >
+        </div>
+
+        <button class="primary-btn" type="submit">
+          Sign in
+        </button>
+
+      </form>
+
+      <!-- REGISTER -->
+
+      <form id="registerForm" class="hidden">
+
+        <div class="form-group">
+          <label>Full name</label>
+          <input
+            id="registerName"
+            type="text"
+            placeholder="Your full name"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Email</label>
+          <input
+            id="registerEmail"
+            type="email"
+            placeholder="you@example.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <input
+            id="registerPassword"
+            type="password"
+            placeholder="At least 8 characters"
+            minlength="8"
+            required
+          >
+        </div>
+
+        <button class="primary-btn" type="submit">
+          Create sandbox account
+        </button>
+
+      </form>
+
+      <div class="footer">
+        Sandbox environment only.<br>
+        No real customer funds, Bitcoin transfers or investment returns are enabled.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       DASHBOARD
+  ========================== -->
+
+  <div id="dashboardPage" class="page dashboard hidden">
+
+    <header class="topbar">
+
+      <div class="top-brand">
+
+        <div class="top-brand-mark">
+          C5
+        </div>
+
+        <div>
+          <strong>CITYFIVE</strong>
+          <span>HOLDINGS LTD</span>
+        </div>
+
+      </div>
+
+      <div class="top-actions">
+
+        <div class="sandbox-pill">
+          SANDBOX
+        </div>
+
+        <button class="secondary-btn" onclick="logout()">
+          Sign out
+        </button>
+
+      </div>
+
+    </header>
+
+
+    <main class="container">
+
+      <section class="hero">
+
+        <small>PRIVATE DIGITAL ASSET ENVIRONMENT</small>
+
+        <h2>Digital assets, handled with clarity.</h2>
+
+        <p>
+          Welcome to the CityFive Holdings Ltd sandbox environment.
+          Review your simulated account, create simulated Bitcoin activity,
+          manage account information and speak with the CityFive AI assistant.
+        </p>
+
+      </section>
+
+
+      <div class="sandbox-banner">
+
+        <strong>SANDBOX ENVIRONMENT</strong><br>
+
+        This environment uses simulated balances and transactions.
+        No real customer funds, Bitcoin transfers or investment returns are enabled.
+        Nothing displayed here represents real money.
+
+      </div>
+
+
+      <!-- BALANCES -->
+
+      <section class="balance-grid">
+
+        <div class="balance-card">
+
+          <div class="balance-label">
+            Canadian dollar account
+          </div>
+
+          <div id="cadBalance" class="balance-value">
+            C$0.00
+          </div>
+
+          <div class="balance-sub">
+            Simulated CAD balance
+          </div>
+
+        </div>
+
+
+        <div class="balance-card">
+
+          <div class="balance-label">
+            Bitcoin
+          </div>
+
+          <div id="btcBalance" class="balance-value">
+            0.00000000 BTC
+          </div>
+
+          <div class="balance-sub">
+            Simulated BTC balance
+          </div>
+
+        </div>
+
+
+        <div class="balance-card">
+
+          <div class="balance-label">
+            Account verification
+          </div>
+
+          <div id="kycBalanceStatus" class="balance-value">
+            Pending
+          </div>
+
+          <div class="balance-sub">
+            KYC status
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ACTIONS -->
+
+      <section class="action-grid">
+
+        <button class="action-card" onclick="openDepositModal()">
+
+          <div class="action-icon">₿</div>
+
+          <strong>Deposit BTC</strong>
+
+          <span>
+            Create a simulated Bitcoin deposit
+          </span>
+
+        </button>
+
+
+        <button class="action-card" onclick="openWithdrawalModal()">
+
+          <div class="action-icon">↗</div>
+
+          <strong>Withdraw BTC</strong>
+
+          <span>
+            Create a simulated withdrawal
+          </span>
+
+        </button>
+
+
+        <button class="action-card" onclick="openKycModal()">
+
+          <div class="action-icon">✓</div>
+
+          <strong>Account verification</strong>
+
+          <span>
+            Submit your sandbox verification request
+          </span>
+
+        </button>
+
+
+        <button class="action-card" onclick="document.getElementById('aiInput').focus()">
+
+          <div class="action-icon">✦</div>
+
+          <strong>CityFive AI</strong>
+
+          <span>
+            Ask the CityFive assistant
+          </span>
+
+        </button>
+
+      </section>
+
+
+      <!-- MAIN CONTENT -->
+
+      <section class="section-grid">
+
+
+        <!-- LEFT -->
+
+        <div>
+
+          <!-- TRANSACTIONS -->
+
+          <div class="panel">
+
+            <div class="panel-title">
+
+              <h3>Recent transactions</h3>
+
+              <span>Account history</span>
+
+            </div>
+
+            <div id="transactionsList">
+              <div class="empty">
+                No transactions yet.
+              </div>
+            </div>
+
+          </div>
+
+
+          <!-- ACCOUNT -->
+
+          <div class="panel">
+
+            <div class="panel-title">
+
+              <h3>Account information</h3>
+
+              <span>Private account</span>
+
+            </div>
+
+            <div class="status-row">
+
+              <span class="status-label">
+                Name
+              </span>
+
+              <span id="accountName" class="status-value">
+                —
+              </span>
+
+            </div>
+
+            <div class="status-row">
+
+              <span class="status-label">
+                Email
+              </span>
+
+              <span id="accountEmail" class="status-value">
+                —
+              </span>
+
+            </div>
+
+            <div class="status-row">
+
+              <span class="status-label">
+                KYC
+              </span>
+
+              <span id="accountKyc" class="status-value status-pending">
+                Pending
+              </span>
+
+            </div>
+
+            <div class="status-row">
+
+              <span class="status-label">
+                Environment
+              </span>
+
+              <span class="status-value">
+                SANDBOX
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- RIGHT -->
+
+        <div>
+
+          <!-- AI -->
+
+          <div class="panel ai-panel">
+
+            <div class="panel-title">
+
+              <h3>CityFive AI</h3>
+
+              <span>Assistant</span>
+
+            </div>
+
+            <div id="aiMessages" class="ai-messages">
+
+              <div class="ai-message bot">
+                Welcome to CityFive AI.
+
+                I can help explain the sandbox dashboard,
+                simulated BTC deposits and withdrawals,
+                transaction history, account verification,
+                and general Bitcoin concepts.
+
+                What would you like to know?
+              </div>
+
+            </div>
+
+            <div class="ai-input">
+
+              <input
+                id="aiInput"
+                type="text"
+                placeholder="Ask CityFive AI..."
+                onkeydown="if(event.key==='Enter') sendAI()"
+              >
+
+              <button onclick="sendAI()">
+                Send
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <!-- STATUS -->
+
+          <div class="panel">
+
+            <div class="panel-title">
+
+              <h3>Platform status</h3>
+
+            </div>
+
+            <div class="status-row">
+
+              <span class="status-label">
+                Platform
+              </span>
+
+              <span class="status-value">
+                Online
+              </span>
+
+            </div>
+
+            <div class="status-row">
+
+              <span class="status-label">
+                Mode
+              </span>
+
+              <span class="status-value status-pending">
+                SANDBOX
+              </span>
+
+            </div>
+
+            <div class="status-row">
+
+              <span class="status-label">
+                Real funds
+              </span>
+
+              <span class="status-value">
+                Disabled
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <div class="footer">
+
+        CITYFIVE HOLDINGS LTD<br>
+
+        Sandbox environment only.
+        Balances and transactions are simulated.
+        No real customer funds, Bitcoin transfers or investment returns are enabled.
+
+      </div>
+
+    </main>
+
+  </div>
+
+
+  <!-- =========================
+       DEPOSIT MODAL
+  ========================== -->
+
+  <div id="depositModal" class="modal-overlay hidden">
+
+    <div class="modal">
+
+      <h3>Simulated BTC deposit</h3>
+
+      <p class="modal-description">
+
+        Enter a BTC amount to create a simulated deposit.
+        This does not send Bitcoin and does not create a real blockchain transaction.
+
+      </p>
+
+      <div id="depositMessage"></div>
+
+      <div class="form-group">
+
+        <label>BTC amount</label>
+
+        <input
+          id="depositAmount"
+          type="number"
+          step="0.00000001"
+          min="0.00000001"
+          placeholder="0.01000000"
+        >
+
+      </div>
+
+      <div id="depositResult" class="deposit-result hidden"></div>
+
+      <div class="modal-actions">
+
+        <button
+          class="secondary-btn"
+          onclick="closeDepositModal()"
+        >
+          Close
+        </button>
+
+        <button
+          id="generateDepositBtn"
+          class="primary-btn"
+          onclick="generateDeposit()"
+        >
+          Generate simulated deposit
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       WITHDRAWAL MODAL
+  ========================== -->
+
+  <div id="withdrawalModal" class="modal-overlay hidden">
+
+    <div class="modal">
+
+      <h3>Simulated BTC withdrawal</h3>
+
+      <p class="modal-description">
+
+        Create a simulated withdrawal from your sandbox BTC balance.
+        No real Bitcoin will be sent.
+
+      </p>
+
+      <div id="withdrawalMessage"></div>
+
+      <div class="form-group">
+
+        <label>BTC amount</label>
+
+        <input
+          id="withdrawalAmount"
+          type="number"
+          step="0.00000001"
+          min="0.00000001"
+          placeholder="0.00100000"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Simulated destination address</label>
+
+        <input
+          id="withdrawalAddress"
+          type="text"
+          placeholder="Enter a simulated BTC address"
+        >
+
+      </div>
+
+      <div class="modal-actions">
+
+        <button
+          class="secondary-btn"
+          onclick="closeWithdrawalModal()"
+        >
+          Cancel
+        </button>
+
+        <button
+          class="primary-btn"
+          onclick="createWithdrawal()"
+        >
+          Create simulated withdrawal
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       KYC MODAL
+  ========================== -->
+
+  <div id="kycModal" class="modal-overlay hidden">
+
+    <div class="modal">
+
+      <h3>Account verification</h3>
+
+      <p class="modal-description">
+
+        This is a sandbox verification form.
+        Do not submit real identity documents or sensitive personal information.
+
+      </p>
+
+      <div id="kycMessage"></div>
+
+      <div class="form-group">
+
+        <label>Full name</label>
+
+        <input
+          id="kycName"
+          type="text"
+          placeholder="Your name"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Country</label>
+
+        <input
+          id="kycCountry"
+          type="text"
+          placeholder="Country"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Verification note</label>
+
+        <textarea
+          id="kycNote"
+          placeholder="Sandbox verification note"
+        ></textarea>
+
+      </div>
+
+      <div class="modal-actions">
+
+        <button
+          class="secondary-btn"
+          onclick="closeKycModal()"
+        >
+          Cancel
+        </button>
+
+        <button
+          class="primary-btn"
+          onclick="submitKyc()"
+        >
+          Submit sandbox request
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <script>
+
+    /* =========================
+       CONFIGURATION
+    ========================== */
+
+    const API_BASE =
+      "https://pressure-damp-fish.abasthan.app";
+
+    const TOKEN_KEY =
+      "cityfive_token";
+
+
+    /* =========================
+       HELPERS
+    ========================== */
+
+    function getToken() {
+      return localStorage.getItem(TOKEN_KEY);
+    }
+
+
+    function setToken(token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    }
+
+
+    function clearToken() {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+
+
+    async function api(path, options = {}) {
+
+      const headers = {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      };
+
+      const token = getToken();
+
+      if (token) {
+        headers.Authorization =
+          "Bearer " + token;
+      }
+
+      const response =
+        await fetch(API_BASE + path, {
+          ...options,
+          headers
+        });
+
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.message ||
+          data.error ||
+          "Request failed"
+        );
+
+      }
+
+      return data;
+    }
+
+
+    function showMessage(elementId, text, type = "error") {
+
+      const element =
+        document.getElementById(elementId);
+
+      if (!element) return;
+
+      element.innerHTML =
+        `<div class="message ${type}">
+          ${escapeHtml(text)}
+        </div>`;
+    }
+
+
+    function clearMessage(elementId) {
+
+      const element =
+        document.getElementById(elementId);
+
+      if (element) {
+        element.innerHTML = "";
+      }
+    }
+
+
+    function escapeHtml(value) {
+
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    }
+
+
+    function formatBTC(value) {
+
+      const number =
+        Number(value || 0);
+
+      return number.toFixed(8) + " BTC";
+
+    }
+
+
+    function formatCAD(value) {
+
+      const number =
+        Number(value || 0);
+
+      return new Intl.NumberFormat(
+        "en-CA",
+        {
+          style: "currency",
+          currency: "CAD"
+        }
+      ).format(number);
+
+    }
+
+
+    /* =========================
+       AUTH TABS
+    ========================== */
+
+    function showAuth(type) {
+
+      const loginForm =
+        document.getElementById("loginForm");
+
+      const registerForm =
+        document.getElementById("registerForm");
+
+      const loginTab =
+        document.getElementById("loginTab");
+
+      const registerTab =
+        document.getElementById("registerTab");
+
+      clearMessage("authMessage");
+
+      if (type === "login") {
+
+        loginForm.classList.remove("hidden");
+        registerForm.classList.add("hidden");
+
+        loginTab.classList.add("active");
+        registerTab.classList.remove("active");
+
+      } else {
+
+        loginForm.classList.add("hidden");
+        registerForm.classList.remove("hidden");
+
+        loginTab.classList.remove("active");
+        registerTab.classList.add("active");
+
+      }
+
+    }
+
+
+    /* =========================
+       LOGIN
+    ========================== */
+
+    document
+      .getElementById("loginForm")
+      .addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        clearMessage("authMessage");
+
+        const email =
+          document
+            .getElementById("loginEmail")
+            .value
+            .trim();
+
+        const password =
+          document
+            .getElementById("loginPassword")
+            .value;
+
+        try {
+
+          const result =
+            await api(
+              "/login",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  email,
+                  password
+                })
+              }
+            );
+
+          if (!result.token) {
+            throw new Error("No login token returned.");
+          }
+
+          setToken(result.token);
+
+          await showDashboard();
+
+        } catch (error) {
+
+          showMessage(
+            "authMessage",
+            error.message
+          );
+
+        }
+
+      });
+
+
+    /* =========================
+       REGISTER
+    ========================== */
+
+    document
+      .getElementById("registerForm")
+      .addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        clearMessage("authMessage");
+
+        const name =
+          document
+            .getElementById("registerName")
+            .value
+            .trim();
+
+        const email =
+          document
+            .getElementById("registerEmail")
+            .value
+            .trim();
+
+        const password =
+          document
+            .getElementById("registerPassword")
+            .value;
+
+        try {
+
+          const result =
+            await api(
+              "/register",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  name,
+                  email,
+                  password
+                })
+              }
+            );
+
+          if (result.token) {
+
+            setToken(result.token);
+
+            await showDashboard();
+
+          } else {
+
+            showMessage(
+              "authMessage",
+              "Account created. Please sign in.",
+              "success"
+            );
+
+            showAuth("login");
+
+            document
+              .getElementById("loginEmail")
+              .value = email;
+
+          }
+
+        } catch (error) {
+
+          showMessage(
+            "authMessage",
+            error.message
+          );
+
+        }
+
+      });
+
+
+    /* =========================
+       DASHBOARD
+    ========================== */
+
+    async function showDashboard() {
+
+      document
+        .getElementById("authPage")
+        .classList.add("hidden");
+
+      document
+        .getElementById("dashboardPage")
+        .classList.remove("hidden");
+
+      await refreshDashboard();
+
+    }
+
+
+    async function refreshDashboard() {
+
+      try {
+
+        const me =
+          await api("/me");
+
+        const account =
+          await api("/accounts");
+
+        const transactions =
+          await api("/transactions");
+
+        renderUser(me);
+        renderAccount(account);
+        renderTransactions(transactions);
+
+      } catch (error) {
+
+        console.error(error);
+
+        if (
+          error.message
+            .toLowerCase()
+            .includes("token") ||
+          error.message
+            .toLowerCase()
+            .includes("unauthorized")
+        ) {
+
+          logout();
+
+        }
+
+      }
+
+    }
+
+
+    function renderUser(me) {
+
+      const user =
+        me.user || me;
+
+      document
+        .getElementById("accountName")
+        .textContent =
+          user.name ||
+          user.fullName ||
+          "—";
+
+      document
+        .getElementById("accountEmail")
+        .textContent =
+          user.email ||
+          "—";
+
+      const kyc =
+        user.kycStatus ||
+        user.verificationStatus ||
+        "pending";
+
+      const label =
+        String(kyc);
+
+      document
+        .getElementById("accountKyc")
+        .textContent =
+          capitalize(label);
+
+      document
+        .getElementById("kycBalanceStatus")
+        .textContent =
+          capitalize(label);
+
+    }
+
+
+    function renderAccount(data) {
+
+      const account =
+        Array.isArray(data)
+          ? data[0]
+          : data.account || data;
+
+      if (!account) return;
+
+      const cad =
+        account.cadBalance ??
+        account.availableCadBalance ??
+        0;
+
+      const btc =
+        account.btcBalance ??
+        account.availableBtcBalance ??
+        0;
+
+      document
+        .getElementById("cadBalance")
+        .textContent =
+          formatCAD(cad);
+
+      document
+        .getElementById("btcBalance")
+        .textContent =
+          formatBTC(btc);
+
+    }
+
+
+    function capitalize(value) {
+
+      const text =
+        String(value || "");
+
+      return text.charAt(0).toUpperCase() +
+        text.slice(1);
+
+    }
+
+
+    /* =========================
+       TRANSACTIONS
+    ========================== */
+
+    function renderTransactions(data) {
+
+      const list =
+        document.getElementById(
+          "transactionsList"
+        );
+
+      let transactions = [];
+
+      if (Array.isArray(data)) {
+        transactions = data;
+      } else if (Array.isArray(data.transactions)) {
+        transactions = data.transactions;
+      } else if (Array.isArray(data.ledger)) {
+        transactions = data.ledger;
+      }
+
+      if (!transactions.length) {
+
+        list.innerHTML =
+          `<div class="empty">
+            No transactions yet.
+          </div>`;
+
+        return;
+      }
+
+      list.innerHTML =
+        transactions
+          .slice(0, 20)
+          .map(renderTransaction)
+          .join("");
+
+    }
+
+
+    function renderTransaction(tx) {
+
+      const amount =
+        Number(tx.amount || 0);
+
+      const currency =
+        String(
+          tx.currency ||
+          tx.asset ||
+          "BTC"
+        ).toUpperCase();
+
+      const positive =
+        amount >= 0;
+
+      const description =
+        tx.description ||
+        tx.type ||
+        "Account transaction";
+
+      const date =
+        tx.createdAt ||
+        tx.created_at ||
+        tx.date;
+
+      const formattedDate =
+        date
+          ? new Date(date).toLocaleString()
+          : "";
+
+      let amountText;
+
+      if (currency === "CAD") {
+
+        amountText =
+          (positive ? "+" : "") +
+          formatCAD(amount);
+
+      } else {
+
+        amountText =
+          (positive ? "+" : "") +
+          Math.abs(amount).toFixed(8) +
+          " BTC";
+
+        if (amount < 0) {
+          amountText =
+            "-" +
+            Math.abs(amount).toFixed(8) +
+            " BTC";
+        }
+
+      }
+
+      return `
+        <div class="transaction">
+
+          <div class="tx-left">
+
+            <div class="tx-icon">
+              ${currency === "BTC" ? "₿" : "$"}
+            </div>
+
+            <div>
+
+              <div class="tx-description">
+                ${escapeHtml(description)}
+              </div>
+
+              <div class="tx-date">
+                ${escapeHtml(formattedDate)}
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="tx-amount ${
+            positive ? "positive" : "negative"
+          }">
+
+            ${escapeHtml(amountText)}
+
+          </div>
+
+        </div>
+      `;
+
+    }
+
+
+    /* =========================
+       DEPOSIT
+    ========================== */
+
+    let currentDepositId = null;
+
+
+    function openDepositModal() {
+
+      clearMessage("depositMessage");
+
+      document
+        .getElementById("depositResult")
+        .classList.add("hidden");
+
+      document
+        .getElementById("depositAmount")
+        .value = "";
+
+      currentDepositId = null;
+
+      document
+        .getElementById("generateDepositBtn")
+        .textContent =
+          "Generate simulated deposit";
+
+      document
+        .getElementById("generateDepositBtn")
+        .disabled = false;
+
+      document
+        .getElementById("depositModal")
+        .classList.remove("hidden");
+
+    }
+
+
+    function closeDepositModal() {
+
+      document
+        .getElementById("depositModal")
+        .classList.add("hidden");
+
+    }
+
+
+    async function generateDeposit() {
+
+      clearMessage("depositMessage");
+
+      const amount =
+        Number(
+          document
+            .getElementById("depositAmount")
+            .value
+        );
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+
+        showMessage(
+          "depositMessage",
+          "Enter a valid BTC amount."
+        );
+
+        return;
+      }
+
+      const button =
+        document.getElementById(
+          "generateDepositBtn"
+        );
+
+      button.disabled = true;
+      button.textContent = "Generating...";
+
+      try {
+
+        const result =
+          await api(
+            "/deposits/btc",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                amount
+              })
+            }
+          );
+
+        const deposit =
+          result.deposit ||
+          result;
+
+        currentDepositId =
+          deposit._id ||
+          deposit.id ||
+          deposit.depositId;
+
+        if (!currentDepositId) {
+
+          throw new Error(
+            "Deposit was created but no deposit ID was returned."
+          );
+
+        }
+
+        const simulatedAddress =
+          deposit.address ||
+          "sandbox-btc-" +
+          currentDepositId;
+
+        document
+          .getElementById("depositResult")
+          .classList.remove("hidden");
+
+        document
+          .getElementById("depositResult")
+          .innerHTML = `
+
+            <p>
+              <strong>Simulated deposit generated.</strong>
+            </p>
+
+            <p>
+              Amount:
+              <strong>
+                ${escapeHtml(formatBTC(amount))}
+              </strong>
+            </p>
+
+            <p>
+              Simulated deposit reference:
+            </p>
+
+            <div class="deposit-code">
+              ${escapeHtml(simulatedAddress)}
+            </div>
+
+            <p style="margin-top:12px;color:#d8ba67;">
+              The BTC balance will not increase until
+              you confirm the simulated deposit.
+            </p>
+
+            <button
+              class="primary-btn"
+              onclick="confirmDeposit()"
+              style="margin-top:10px;"
+            >
+              Confirm simulated deposit
+            </button>
+
+          `;
+
+        button.classList.add("hidden");
+
+      } catch (error) {
+
+        showMessage(
+          "depositMessage",
+          error.message
+        );
+
+        button.disabled = false;
+        button.textContent =
+          "Generate simulated deposit";
+
+      }
+
+    }
+
+
+    async function confirmDeposit() {
+
+      if (!currentDepositId) {
+
+        showMessage(
+          "depositMessage",
+          "No simulated deposit is ready to confirm."
+        );
+
+        return;
+      }
+
+      try {
+
+        const result =
+          await api(
+            `/deposits/btc/${encodeURIComponent(currentDepositId)}/confirm`,
+            {
+              method: "POST"
+            }
+          );
+
+        const deposit =
+          result.deposit ||
+          result;
+
+        document
+          .getElementById("depositResult")
+          .innerHTML = `
+
+            <p>
+              <strong class="positive">
+                Simulated BTC deposit confirmed.
+              </strong>
+            </p>
+
+            <p>
+              Amount:
+              <strong>
+                ${escapeHtml(
+                  formatBTC(
+                    deposit.amount ||
+                    document
+                      .getElementById("depositAmount")
+                      .value
+                  )
+                )}
+              </strong>
+            </p>
+
+            <p style="color:#8fdda5;">
+              Your simulated BTC balance has been updated.
+            </p>
+
+          `;
+
+        await refreshDashboard();
+
+      } catch (error) {
+
+        showMessage(
+          "depositMessage",
+          error.message
+        );
+
+      }
+
+    }
+
+
+    /* =========================
+       WITHDRAWAL
+    ========================== */
+
+    function openWithdrawalModal() {
+
+      clearMessage("withdrawalMessage");
+
+      document
+        .getElementById("withdrawalAmount")
+        .value = "";
+
+      document
+        .getElementById("withdrawalAddress")
+        .value = "";
+
+      document
+        .getElementById("withdrawalModal")
+        .classList.remove("hidden");
+
+    }
+
+
+    function closeWithdrawalModal() {
+
+      document
+        .getElementById("withdrawalModal")
+        .classList.add("hidden");
+
+    }
+
+
+    async function createWithdrawal() {
+
+      clearMessage("withdrawalMessage");
+
+      const amount =
+        Number(
+          document
+            .getElementById("withdrawalAmount")
+            .value
+        );
+
+      const address =
+        document
+          .getElementById("withdrawalAddress")
+          .value
+          .trim();
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+
+        showMessage(
+          "withdrawalMessage",
+          "Enter a valid BTC amount."
+        );
+
+        return;
+      }
+
+      if (!address) {
+
+        showMessage(
+          "withdrawalMessage",
+          "Enter a simulated destination address."
+        );
+
+        return;
+      }
+
+      try {
+
+        await api(
+          "/withdrawals/btc",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              amount,
+              address
+            })
+          }
+        );
+
+        showMessage(
+          "withdrawalMessage",
+          "Simulated withdrawal created successfully.",
+          "success"
+        );
+
+        await refreshDashboard();
+
+        setTimeout(
+          closeWithdrawalModal,
+          900
+        );
+
+      } catch (error) {
+
+        showMessage(
+          "withdrawalMessage",
+          error.message
+        );
+
+      }
+
+    }
+
+
+    /* =========================
+       KYC
+    ========================== */
+
+    function openKycModal() {
+
+      clearMessage("kycMessage");
+
+      document
+        .getElementById("kycModal")
+        .classList.remove("hidden");
+
+    }
+
+
+    function closeKycModal() {
+
+      document
+        .getElementById("kycModal")
+        .classList.add("hidden");
+
+    }
+
+
+    async function submitKyc() {
+
+      clearMessage("kycMessage");
+
+      const name =
+        document
+          .getElementById("kycName")
+          .value
+          .trim();
+
+      const country =
+        document
+          .getElementById("kycCountry")
+          .value
+          .trim();
+
+      const note =
+        document
+          .getElementById("kycNote")
+          .value
+          .trim();
+
+      if (!name || !country) {
+
+        showMessage(
+          "kycMessage",
+          "Enter the sandbox verification details."
+        );
+
+        return;
+      }
+
+      try {
+
+        let result;
+
+        try {
+
+          result =
+            await api(
+              "/kyc/submit",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  name,
+                  country,
+                  note
+                })
+              }
+            );
+
+        } catch {
+
+          result =
+            await api(
+              "/kyc",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  name,
+                  country,
+                  note
+                })
+              }
+            );
+
+        }
+
+        showMessage(
+          "kycMessage",
+          "Sandbox verification request submitted.",
+          "success"
+        );
+
+        await refreshDashboard();
+
+        setTimeout(
+          closeKycModal,
+          1000
+        );
+
+      } catch (error) {
+
+        showMessage(
+          "kycMessage",
+          error.message
+        );
+
+      }
+
+    }
+
+
+    /* =========================
+       CITYFIVE AI
+    ========================== */
+
+    function addAIMessage(text, type) {
+
+      const container =
+        document.getElementById(
+          "aiMessages"
+        );
+
+      const message =
+        document.createElement("div");
+
+      message.className =
+        "ai-message " + type;
+
+      message.textContent = text;
+
+      container.appendChild(message);
+
+      container.scrollTop =
+        container.scrollHeight;
+
+    }
+
+
+    async function sendAI() {
+
+      const input =
+        document.getElementById("aiInput");
+
+      const message =
+        input.value.trim();
+
+      if (!message) return;
+
+      input.value = "";
+
+      addAIMessage(
+        message,
+        "user"
+      );
+
+      addAIMessage(
+        "CityFive AI is thinking...",
+        "bot"
+      );
+
+      const messages =
+        document.querySelectorAll(
+          "#aiMessages .ai-message"
+        );
+
+      const thinkingMessage =
+        messages[messages.length - 1];
+
+      try {
+
+        const result =
+          await api(
+            "/ai/chat",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                message
+              })
+            }
+          );
+
+        const reply =
+          result.reply ||
+          result.message ||
+          result.response ||
+          "I couldn't generate a response.";
+
+        thinkingMessage.textContent =
+          reply;
+
+      } catch (error) {
+
+        thinkingMessage.textContent =
+          "CityFive AI is currently unavailable. " +
+          error.message;
+
+      }
+
+    }
+
+
+    /* =========================
+       LOGOUT
+    ========================== */
+
+    async function logout() {
+
+      try {
+
+        await api(
+          "/logout",
+          {
+            method: "POST"
+          }
+        );
+
+      } catch {
+        // Local logout still proceeds.
+      }
+
+      clearToken();
+
+      document
+        .getElementById("dashboardPage")
+        .classList.add("hidden");
+
+      document
+        .getElementById("authPage")
+        .classList.remove("hidden");
+
+      showAuth("login");
+
+    }
+
+
+    /* =========================
+       STARTUP
+    ========================== */
+
+    async function startApp() {
+
+      const token =
+        getToken();
+
+      if (!token) {
+
+        showAuth("login");
+        return;
+
+      }
+
+      try {
+
+        await api("/me");
+
+        await showDashboard();
+
+      } catch {
+
+        clearToken();
+
+        showAuth("login");
+
+      }
+
+    }
+
+
+    startApp();
+
+  </script>
+
+</body>
+</html>
