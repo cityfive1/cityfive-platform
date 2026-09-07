@@ -412,10 +412,11 @@ const LedgerSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: [
-        "deposit",
-        "withdrawal",
-        "adjustment"
-      ],
+  "deposit",
+  "withdrawal",
+  "adjustment",
+  "withdrawal_refund"
+],
       required: true
     },
 
