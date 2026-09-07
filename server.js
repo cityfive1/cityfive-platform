@@ -936,3 +936,842 @@ app.get(
     }
   }
 );
+/* ---------- password reset ---------- */
+
+app.post(
+  "/sandbox/request-password-reset",
+  async (req, res, next) => {
+    try {
+      const email =
+        String(
+          req.body.email || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      const user =
+        await User.findOne({
+          email
+        });
+
+      /*
+       * Always return the same response so
+       * the endpoint does not reveal whether
+       * an email exists.
+       */
+      if (!user) {
+        return res.json({
+          ok: true,
+          message:
+            "If the account exists, a reset request has been created."
+        });
+      }
+
+      const rawToken =
+        crypto
+          .randomBytes(32)
+          .toString("hex");
+
+      await PasswordReset.deleteMany({
+        userId: user._id,
+        usedAt: null
+      });
+
+      await PasswordReset.create({
+        tokenHash: sha256(
+          rawToken
+        ),
+        userId: user._id,
+        expiresAt: new Date(
+          Date.now() +
+            30 * 60 * 1000
+        )
+      });
+
+      /*
+       * Sandbox only:
+       * return the token so the frontend
+       * can demonstrate the reset flow.
+       *
+       * A production system should send
+       * the reset link through a trusted
+       * email provider instead.
+       */
+      res.json({
+        ok: true,
+        mode: "SANDBOX",
+        resetToken: rawToken,
+        message:
+          "Sandbox password reset created."
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+app.post(
+  "/sandbox/reset-password",
+  async (req, res, next) => {
+    try {
+      const token =
+        String(
+          req.body.token || ""
+        ).trim();
+
+      const password =
+        String(
+          req.body.password || ""
+        );
+
+      if (
+        !token ||
+        password.length < 10
+      ) {
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "A valid reset token and password of at least 10 characters are required."
+          });
+      }
+
+      const reset =
+        await PasswordReset.findOne({
+          tokenHash: sha256(
+            token
+          ),
+          usedAt: null,
+          expiresAt: {
+            $gt: new Date()
+          }
+        });
+
+      if (!reset) {
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "Invalid or expired reset token."
+          });
+      }
+
+      const user =
+        await User.findById(
+          reset.userId
+        );
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({
+            ok: false,
+            error:
+              "Account not found."
+          });
+      }
+
+      user.passwordHash =
+        await bcrypt.hash(
+          password,
+          12
+        );
+
+      await user.save();
+
+      reset.usedAt =
+        new Date();
+
+      await reset.save();
+
+      /*
+       * Invalidate all existing sessions
+       * after a password change.
+       */
+      await AuthToken.deleteMany({
+        userId: user._id
+      });
+
+      await audit({
+        userId: user._id,
+        actorId: user._id,
+        action:
+          "SANDBOX_PASSWORD_RESET",
+        ip: req.ip
+      });
+
+      res.json({
+        ok: true,
+        message:
+          "Password reset successfully."
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ---------- KYC ---------- */
+
+app.get(
+  "/kyc",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      let profile =
+        await KycProfile.findOne({
+          userId: req.user._id
+        });
+
+      if (!profile) {
+        profile =
+          await KycProfile.create({
+            userId:
+              req.user._id,
+            status:
+              req.user.kycStatus ||
+              "not_started"
+          });
+      }
+
+      res.json({
+        ok: true,
+        kyc: profile
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+app.post(
+  "/kyc/submit",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      let profile =
+        await KycProfile.findOne({
+          userId: req.user._id
+        });
+
+      if (!profile) {
+        profile =
+          await KycProfile.create({
+            userId:
+              req.user._id
+          });
+      }
+
+      profile.status =
+        "pending";
+
+      profile.submittedAt =
+        new Date();
+
+      await profile.save();
+
+      req.user.kycStatus =
+        "pending";
+
+      await req.user.save();
+
+      await audit({
+        userId:
+          req.user._id,
+        actorId:
+          req.user._id,
+        action:
+          "KYC_SUBMITTED",
+        ip: req.ip
+      });
+
+      res.json({
+        ok: true,
+        kyc: profile
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ---------- accounts ---------- */
+
+app.get(
+  "/accounts",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      await ensureAccounts(
+        req.user._id
+      );
+
+      const accounts =
+        await Account.find({
+          userId:
+            req.user._id
+        }).sort({
+          currency: 1
+        });
+
+      res.json({
+        ok: true,
+        accounts,
+        mode: "SANDBOX",
+        realFundsEnabled: false
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ---------- sandbox BTC deposits ---------- */
+
+/*
+ * Creates a PENDING simulated BTC deposit.
+ *
+ * IMPORTANT:
+ * This does NOT represent real BTC.
+ * The balance is NOT credited at creation.
+ */
+app.post(
+  "/deposits/btc",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      const amount =
+        Number(
+          req.body.amount
+        );
+
+      if (
+        !validBtcAmount(
+          amount
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "Enter a valid BTC amount greater than 0 and no more than 100 BTC."
+          });
+      }
+
+      await ensureAccounts(
+        req.user._id
+      );
+
+      const deposit =
+        await Deposit.create({
+          userId:
+            req.user._id,
+
+          asset: "BTC",
+
+          amount,
+
+          address: null,
+
+          txid: null,
+
+          status: "pending",
+
+          mode: "SANDBOX",
+
+          confirmations: 0,
+
+          requiredConfirmations: 3,
+
+          creditApplied: false
+        });
+
+      await audit({
+        userId:
+          req.user._id,
+
+        actorId:
+          req.user._id,
+
+        action:
+          "SANDBOX_BTC_DEPOSIT_CREATED",
+
+        details: {
+          depositId:
+            String(
+              deposit._id
+            ),
+
+          amount
+        },
+
+        ip: req.ip
+      });
+
+      res.status(201).json({
+        ok: true,
+
+        mode: "SANDBOX",
+
+        realFundsEnabled: false,
+
+        message:
+          "Simulated BTC deposit created and is pending confirmation.",
+
+        deposit
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/*
+ * Confirm a sandbox BTC deposit.
+ *
+ * This is deliberately separate from creation.
+ * It uses an atomic database update so the same
+ * deposit cannot be credited twice.
+ */
+app.post(
+  "/deposits/btc/:id/confirm",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      const deposit =
+        await Deposit.findOne({
+          _id: req.params.id,
+          userId:
+            req.user._id
+        });
+
+      if (!deposit) {
+        return res
+          .status(404)
+          .json({
+            ok: false,
+            error:
+              "Deposit not found."
+          });
+      }
+
+      if (
+        deposit.status ===
+          "confirmed" &&
+        deposit.creditApplied
+      ) {
+        return res.json({
+          ok: true,
+          alreadyProcessed:
+            true,
+          deposit
+        });
+      }
+
+      if (
+        deposit.status !==
+        "pending"
+      ) {
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "Only pending deposits can be confirmed."
+          });
+      }
+
+      const session =
+        await mongoose.startSession();
+
+      try {
+        await session.withTransaction(
+          async () => {
+            const fresh =
+              await Deposit.findOne({
+                _id:
+                  deposit._id,
+                userId:
+                  req.user._id,
+                status:
+                  "pending",
+                creditApplied:
+                  false
+              }).session(
+                session
+              );
+
+            if (!fresh) {
+              return;
+            }
+
+            const account =
+              await Account.findOne({
+                userId:
+                  req.user._id,
+                currency:
+                  "BTC"
+              }).session(
+                session
+              );
+
+            if (!account) {
+              throw new Error(
+                "BTC account not found."
+              );
+            }
+
+            account.balance =
+              Number(
+                account.balance
+              ) +
+              Number(
+                fresh.amount
+              );
+
+            await account.save({
+              session
+            });
+
+            fresh.status =
+              "confirmed";
+
+            fresh.confirmations =
+              fresh.requiredConfirmations;
+
+            fresh.creditApplied =
+              true;
+
+            await fresh.save({
+              session
+            });
+
+            await Ledger.create(
+              [
+                {
+                  userId:
+                    req.user._id,
+
+                  currency:
+                    "BTC",
+
+                  type:
+                    "deposit",
+
+                  amount:
+                    fresh.amount,
+
+                  referenceId:
+                    String(
+                      fresh._id
+                    ),
+
+                  description:
+                    "Simulated sandbox BTC deposit confirmed."
+                }
+              ],
+              {
+                session
+              }
+            );
+          }
+        );
+      } finally {
+        await session.endSession();
+      }
+
+      const updated =
+        await Deposit.findById(
+          deposit._id
+        );
+
+      await audit({
+        userId:
+          req.user._id,
+
+        actorId:
+          req.user._id,
+
+        action:
+          "SANDBOX_BTC_DEPOSIT_CONFIRMED",
+
+        details: {
+          depositId:
+            String(
+              deposit._id
+            ),
+
+          amount:
+            deposit.amount
+        },
+
+        ip: req.ip
+      });
+
+      res.json({
+        ok: true,
+
+        mode: "SANDBOX",
+
+        realFundsEnabled: false,
+
+        message:
+          "Simulated BTC deposit confirmed and credited.",
+
+        deposit:
+          updated
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ---------- deposit history ---------- */
+
+app.get(
+  "/deposits",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      const deposits =
+        await Deposit.find({
+          userId:
+            req.user._id
+        }).sort({
+          createdAt: -1
+        });
+
+      res.json({
+        ok: true,
+        deposits
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ---------- BTC withdrawals ---------- */
+
+app.post(
+  "/withdrawals/btc",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      const amount =
+        Number(
+          req.body.amount
+        );
+
+      const address =
+        String(
+          req.body.address || ""
+        ).trim();
+
+      if (
+        !validBtcAmount(
+          amount
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "Enter a valid BTC withdrawal amount."
+          });
+      }
+
+      if (
+        !address ||
+        address.length < 10 ||
+        address.length > 120
+      ) {
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "Enter a valid BTC destination address."
+          });
+      }
+
+      const account =
+        await Account.findOne({
+          userId:
+            req.user._id,
+          currency:
+            "BTC"
+        });
+
+      if (!account) {
+        return res
+          .status(404)
+          .json({
+            ok: false,
+            error:
+              "BTC account not found."
+          });
+      }
+
+      if (
+        Number(
+          account.balance
+        ) < amount
+      ) {
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "Insufficient BTC balance."
+          });
+      }
+
+      /*
+       * Phase 1 reserves the amount by
+       * deducting it immediately.
+       *
+       * A production custody integration
+       * should use a proper withdrawal
+       * reservation/state machine.
+       */
+      account.balance =
+        Number(
+          account.balance
+        ) - amount;
+
+      await account.save();
+
+      const withdrawal =
+        await Withdrawal.create({
+          userId:
+            req.user._id,
+
+          asset: "BTC",
+
+          amount,
+
+          address,
+
+          txid: null,
+
+          status: "pending",
+
+          mode: "SANDBOX"
+        });
+
+      await Ledger.create({
+        userId:
+          req.user._id,
+
+        currency: "BTC",
+
+        type: "withdrawal",
+
+        amount:
+          -amount,
+
+        referenceId:
+          String(
+            withdrawal._id
+          ),
+
+        description:
+          "Sandbox BTC withdrawal request."
+      });
+
+      await audit({
+        userId:
+          req.user._id,
+
+        actorId:
+          req.user._id,
+
+        action:
+          "SANDBOX_BTC_WITHDRAWAL_CREATED",
+
+        details: {
+          withdrawalId:
+            String(
+              withdrawal._id
+            ),
+
+          amount,
+
+          address
+        },
+
+        ip: req.ip
+      });
+
+      res.status(201).json({
+        ok: true,
+
+        mode: "SANDBOX",
+
+        realFundsEnabled: false,
+
+        message:
+          "Simulated BTC withdrawal request created.",
+
+        withdrawal
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+app.get(
+  "/withdrawals",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      const withdrawals =
+        await Withdrawal.find({
+          userId:
+            req.user._id
+        }).sort({
+          createdAt: -1
+        });
+
+      res.json({
+        ok: true,
+        withdrawals
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ---------- transactions ---------- */
+
+app.get(
+  "/transactions",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      const ledger =
+        await Ledger.find({
+          userId:
+            req.user._id
+        }).sort({
+          createdAt: -1
+        });
+
+      res.json({
+        ok: true,
+        transactions:
+          ledger
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
