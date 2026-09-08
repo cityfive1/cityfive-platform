@@ -1,51 +1,56 @@
-async function verifyWebhook(
-  rawBody,
-  signature
-) {
-  if (!signature) {
-    return false;
-  }
 
-  if (!rawBody) {
-    return false;
-  }
+"use strict";
 
-  try {
-    const body = Buffer.isBuffer(rawBody)
-      ? rawBody
-      : Buffer.from(rawBody);
+/**
+ * CityFive Holdings Ltd
+ * Fireblocks integration — SANDBOX ONLY
+ *
+ * IMPORTANT:
+ * - This module does NOT connect to Fireblocks.
+ * - No real wallets, assets, transfers, or withdrawals are handled.
+ * - Real-funds functionality must remain disabled.
+ */
 
-    const parts = signature.split(".");
+const PLATFORM_MODE =
+  process.env.PLATFORM_MODE || "SANDBOX";
 
-    if (parts.length !== 3) {
-      console.error(
-        "Invalid Fireblocks detached JWS format"
-      );
-      return false;
-    }
+const REAL_FUNDS_ENABLED =
+  String(process.env.REAL_FUNDS_ENABLED || "false")
+    .toLowerCase() === "true";
 
-    const header = parts[0];
-    const sig = parts[2];
-
-    const payload =
-      body.toString("base64url");
-
-    const fullJws =
-      `${header}.${payload}.${sig}`;
-
-    await compactVerify(
-      fullJws,
-      FIREBLOCKS_JWKS
+/**
+ * Verify Fireblocks webhook.
+ *
+ * In SANDBOX mode this intentionally does not perform
+ * real Fireblocks signature verification.
+ *
+ * Returns false rather than pretending a webhook is valid.
+ */
+async function verifyWebhook(rawBody, signature) {
+  if (PLATFORM_MODE !== "SANDBOX" || REAL_FUNDS_ENABLED) {
+    throw new Error(
+      "Fireblocks integration is disabled until a separately reviewed production implementation is enabled."
     );
-
-    return true;
-
-  } catch (error) {
-    console.error(
-      "Fireblocks webhook verification failed:",
-      error.message
-    );
-
-    return false;
   }
+
+  // Sandbox: never trust or process a real Fireblocks webhook.
+  return false;
 }
+
+/**
+ * Sandbox status helper.
+ */
+function getFireblocksStatus() {
+  return {
+    enabled: false,
+    mode: "SANDBOX",
+    realFundsEnabled: false,
+    message:
+      "Fireblocks integration is disabled. No real funds or blockchain transfers are processed."
+  };
+}
+
+module.exports = {
+  verifyWebhook,
+  getFireblocksStatus
+};
