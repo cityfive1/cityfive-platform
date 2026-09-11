@@ -13,7 +13,7 @@ async function cityFiveAssistant(message, user, Account) {
   ) {
     try {
       const account = await Account.findOne({
-        userId: user._id
+        user: user._id
       }).lean();
 
       if (!account) {
