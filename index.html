@@ -996,6 +996,50 @@
       </section>
 
 
+<!-- ADMIN DASHBOARD -->
+
+<section id="adminPanel" class="panel hidden">
+
+  <div class="panel-title">
+    <div>
+      <h3>Admin Dashboard</h3>
+      <span>Sandbox administration</span>
+    </div>
+  </div>
+
+  <div class="status-row">
+    <span class="status-label">Administrator</span>
+    <strong>Authorized</strong>
+  </div>
+
+  <div class="admin-actions">
+
+    <button
+      class="action-card"
+      onclick="loadAdminUsers()"
+    >
+      <div class="action-icon">👥</div>
+      <strong>Users</strong>
+      <span>View sandbox users</span>
+    </button>
+
+    <button
+      class="action-card"
+      onclick="loadAdminWithdrawals()"
+    >
+      <div class="action-icon">₿</div>
+      <strong>Withdrawals</strong>
+      <span>Review sandbox withdrawals</span>
+    </button>
+
+  </div>
+
+  <div id="adminResults" class="admin-results"></div>
+
+</section>
+
+
+
       <!-- MAIN CONTENT -->
 
       <section class="section-grid">
