@@ -1775,6 +1775,13 @@
 
     async function showDashboard() {
 
+      const me = await api("/me");
+
+      if (me.role === "admin") {
+        document
+          .getElementById("adminPanel")
+          .classList.remove("hidden");
+      }
       document
         .getElementById("authPage")
         .classList.add("hidden");
