@@ -46,7 +46,7 @@ async function cityFiveAssistant(message, user, Account) {
     return "For account security, use a strong unique password and never share your password or authentication codes. CityFive is currently operating in sandbox mode.";
   }
 
-  if (q.includes("sandbox") || q.includes("real money") || q.includes("real funds") || q.includes("is this real")) {
+  if (q.includes("sandbox") || q.includes("real money") || q.includes("real funds") || q.includes("is this real") || q.includes("are my funds real")) {
     return "CityFive is currently running in SANDBOX mode. Balances, deposits, withdrawals and transactions are simulated and do not represent real money or real Bitcoin.";
   }
 
