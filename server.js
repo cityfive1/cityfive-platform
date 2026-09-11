@@ -3,6 +3,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const cityFiveAssistant = require("./ai-free");
 const OpenAI = require("openai");
 
 const app = express();
@@ -2146,7 +2147,8 @@ app.post(
 );
 
 // --------------------------------------------------
-// CITYFIVE AI
+// --------------------------------------------------
+// CITYFIVE AI — FREE SANDBOX ASSISTANT
 // --------------------------------------------------
 
 app.post(
@@ -2154,105 +2156,31 @@ app.post(
   requireAuth,
   async (req, res) => {
     try {
-      const message =
-        String(
-          req.body.message || ""
-        ).trim();
+      const message = String(req.body.message || "").trim();
 
       if (!message) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Message is required"
-          });
-      }
-
-      if (!OPENAI_API_KEY) {
-        console.error(
-          "AI ERROR: OPENAI_API_KEY is missing"
-        );
-
-        return res
-          .status(503)
-          .json({
-            error:
-              "AI assistant is not configured on the server."
-          });
-      }
-
-      if (!openai) {
-        openai = new OpenAI({
-          apiKey:
-            OPENAI_API_KEY
+        return res.status(400).json({
+          error: "Message is required"
         });
       }
 
-      console.log(
-        `AI request using model: ${OPENAI_MODEL}`
+      const reply = await cityFiveAssistant(
+        message,
+        req.user,
+        Account
       );
 
-      const response =
-        await openai.responses.create(
-          {
-            model:
-              OPENAI_MODEL,
-
-            instructions:
-              "You are CityFive AI, the assistant for CityFive Holdings Ltd. This website is a SANDBOX environment. Simulated balances, deposits, withdrawals and transactions are not real money and do not represent real blockchain activity. Never claim simulated investment profits are real, never promise returns, and never tell users that a simulated transaction was a real Bitcoin transaction. Be concise, professional and helpful.",
-
-            input: message
-          }
-        );
-
-      const reply =
-        response.output_text ||
-        "I could not generate a response right now.";
-
-      console.log(
-        "AI response received successfully."
-      );
-
-      res.json({
-        reply
-      });
+      res.json({ reply });
     } catch (error) {
-      console.error(
-        "AI request failed:"
-      );
+      console.error("CityFive sandbox assistant error:", error);
 
-      console.error(
-        "AI error name:",
-        error?.name
-      );
-
-      console.error(
-        "AI error message:",
-        error?.message
-      );
-
-      console.error(
-        "AI error status:",
-        error?.status
-      );
-
-      /*
-        Do not send API keys or sensitive
-        server information to the browser.
-      */
-      res
-        .status(503)
-        .json({
-          error:
-            "AI assistant is temporarily unavailable",
-          detail:
-            "The CityFive server could not complete the AI request. Check the Abasthan logs for the AI error."
-        });
+      res.status(500).json({
+        error: "CityFive assistant could not complete the request."
+      });
     }
   }
 );
 
-// --------------------------------------------------
 // ERROR HANDLER
 // --------------------------------------------------
 
