@@ -1916,15 +1916,21 @@
           tx.asset ||
           "BTC"
         ).toUpperCase();
-
       const positive =
-        amount >= 0;
+            amount >= 0;
 
-      const description =
-        tx.description ||
-        tx.type ||
-        "Account transaction";
+          const isPending =
+            tx.type === "deposit_pending" ||
+            tx.status === "pending";
 
+          const description =
+            isPending
+              ? "Sandbox BTC deposit pending"
+              : (
+                  tx.description ||
+                  tx.type ||
+                  "Account transaction"
+                );
       const date =
         tx.createdAt ||
         tx.created_at ||
@@ -1937,14 +1943,16 @@
 
       let amountText;
 
-      if (currency === "CAD") {
-
+      if (isPending) {
+        amountText =
+          "Pending • " +
+          Math.abs(amount).toFixed(8) +
+          " BTC";
+      } else if (currency === "CAD") {
         amountText =
           (positive ? "+" : "") +
           formatCAD(amount);
-
       } else {
-
         amountText =
           (positive ? "+" : "") +
           Math.abs(amount).toFixed(8) +
@@ -1956,9 +1964,7 @@
             Math.abs(amount).toFixed(8) +
             " BTC";
         }
-
       }
-
       return `
         <div class="transaction">
 
