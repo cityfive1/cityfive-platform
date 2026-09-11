@@ -2251,6 +2251,34 @@ mongoose
     console.log(
       "DB connected"
     );
+
+    if (ADMIN_EMAIL) {
+      User.findOneAndUpdate(
+        {
+          email: ADMIN_EMAIL.toLowerCase()
+        },
+        {
+          role: "admin"
+        }
+      )
+        .then((adminUser) => {
+          if (adminUser) {
+            console.log(
+              `Admin account confirmed: ${ADMIN_EMAIL}`
+            );
+          } else {
+            console.log(
+              "Admin account not found yet."
+            );
+          }
+        })
+        .catch((error) => {
+          console.error(
+            "Admin promotion error:",
+            error.message
+          );
+        });
+    }
   })
   .catch((error) => {
     console.error(
