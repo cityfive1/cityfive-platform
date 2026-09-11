@@ -676,7 +676,10 @@ const KycProfileSchema =
         type: String,
         default: ""
       },
-
+            note: {
+        type: String,
+        default: ""
+      },
       status: {
         type: String,
         enum: [
