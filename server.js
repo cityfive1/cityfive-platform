@@ -25,7 +25,8 @@ const REAL_FUNDS_ENABLED =
 
 const SANDBOX_RESET_KEY =
   process.env.SANDBOX_RESET_KEY || "";
-
+const ADMIN_EMAIL =
+  process.env.ADMIN_EMAIL || "";
 const OPENAI_API_KEY =
   process.env.OPENAI_API_KEY || "";
 
