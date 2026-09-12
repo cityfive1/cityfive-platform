@@ -1777,8 +1777,8 @@
 
       const me = await api("/me");
 
-      if (me.role === "admin") {
-        document
+      if (me.user && me.user.role === "admin") {
+         document
           .getElementById("adminPanel")
           .classList.remove("hidden");
       }
